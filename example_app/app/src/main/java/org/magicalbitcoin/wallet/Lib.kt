@@ -15,7 +15,7 @@ class Lib {
     val mapper = ObjectMapper()
         .registerModule(KotlinModule())
 
-    fun construct_wallet(data: WalletConstructor): WalletPtr {
+    fun constructor(data: WalletConstructor): WalletPtr {
         val req = JsonRpc("constructor", mapper.valueToTree(data))
         val reqString = mapper.writeValueAsString(req)
         val resString = call(reqString)
@@ -24,6 +24,18 @@ class Lib {
             throw Exception(json.get("error").asText())
         }
         return mapper.treeToValue(json, WalletPtr::class.java)
+    }
+
+    fun destructor(wallet: WalletPtr) {
+        val node = JsonNodeFactory.instance.objectNode()
+        node.put("wallet", mapper.valueToTree<JsonNode>(wallet))
+        val req = JsonRpc("destructor", node)
+        val reqString = mapper.writeValueAsString(req)
+        val resString = call(reqString)
+        val json: JsonNode = mapper.readValue(resString)
+        if (json.has("error")) {
+            throw Exception(json.get("error").asText())
+        }
     }
 
     fun get_new_address(wallet: WalletPtr): String {
@@ -39,7 +51,7 @@ class Lib {
         return json.asText()
     }
 
-    fun sync(wallet: WalletPtr, max_address: Int?, batch_query_size: Int?) {
+    fun sync(wallet: WalletPtr, max_address: Int?=null, batch_query_size: Int?=null) {
         val node = JsonNodeFactory.instance.objectNode()
         node.put("wallet", mapper.valueToTree<JsonNode>(wallet))
         node.put("max_address", max_address)
@@ -81,16 +93,19 @@ class Lib {
         return json.asLong()
     }
 
-    fun destructor(wallet: WalletPtr) {
+    fun list_transactions(wallet: WalletPtr, include_raw: Boolean?=false): List<UTXO> {
         val node = JsonNodeFactory.instance.objectNode()
         node.put("wallet", mapper.valueToTree<JsonNode>(wallet))
-        val req = JsonRpc("destructor", node)
+        node.put("include_raw", mapper.valueToTree<JsonNode>(include_raw))
+        val req = JsonRpc("list_transactions", node)
         val reqString = mapper.writeValueAsString(req)
         val resString = call(reqString)
         val json: JsonNode = mapper.readValue(resString)
         if (json.has("error")) {
             throw Exception(json.get("error").asText())
         }
+        // FIXME: would be better to re-use the jsonnode instead of parsing the string again
+        return mapper.readValue(resString, mapper.typeFactory.constructCollectionType(List::class.java, TransactionDetails::class.java))
     }
 }
 

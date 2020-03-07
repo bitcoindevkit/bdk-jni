@@ -53,6 +53,11 @@ enum MagicalRequest {
     GetBalance {
         wallet: IntermediatePtr,
     },
+    ListTransactions {
+        wallet: IntermediatePtr,
+
+        include_raw: Option<bool>,
+    },
 }
 
 #[derive(Debug)]
@@ -247,6 +252,10 @@ where
         GetBalance { .. } => {
             serde_json::to_value(&wallet.get_balance()?).map_err(MagicalError::Serialization)
         }
+        ListTransactions { include_raw, .. } => {
+            serde_json::to_value(&wallet.list_transactions(include_raw.unwrap_or(false))?)
+                .map_err(MagicalError::Serialization)
+        }
     };
 
     if let Destructor { .. } = req {
@@ -343,7 +352,8 @@ pub mod android {
             | GetNewAddress { ref wallet }
             | Sync { ref wallet, .. }
             | ListUnspent { ref wallet }
-            | GetBalance { ref wallet } => {
+            | GetBalance { ref wallet }
+            | ListTransactions { ref wallet, .. } => {
                 if let Ok(w) =
                     OpaquePtr::<Wallet<ElectrumPlaintextStream, sled::Tree>>::convert_from(wallet)
                 {

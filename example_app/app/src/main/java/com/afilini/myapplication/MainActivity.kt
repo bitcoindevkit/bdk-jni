@@ -27,15 +27,17 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         setSupportActionBar(toolbar)
 
-        wallet = Lib().construct_wallet(WalletConstructor("test", Network.regtest, filesDir.toString(), "wpkh(tprv8ZgxMBicQKsPexGYyaFwnAsCXCjmz2FaTm6LtesyyihjbQE3gRMfXqQBXKM43DvC1UgRVv1qom1qFxNMSqVAs88qx9PhgFnfGVUdiiDf6j4/0/*)", null, "tcp://tn.not.fyi:55001", null, null))
+        wallet = Lib().constructor(WalletConstructor("test", Network.regtest, filesDir.toString(), "wpkh(tprv8ZgxMBicQKsPexGYyaFwnAsCXCjmz2FaTm6LtesyyihjbQE3gRMfXqQBXKM43DvC1UgRVv1qom1qFxNMSqVAs88qx9PhgFnfGVUdiiDf6j4/0/*)", null, "tcp://tn.not.fyi:55001", null, null))
         fab.setOnClickListener { view ->
             val lib = Lib()
 
-            lib.sync(wallet!!, null, null)
+            Log.i(TAG, lib.get_new_address(wallet!!))
+
+            lib.sync(wallet!!)
 
             Log.i(TAG, lib.get_balance(wallet!!).toString())
             Log.i(TAG, lib.list_unspent(wallet!!).toString())
-            Log.i(TAG, lib.get_new_address(wallet!!))
+            Log.i(TAG, lib.list_transactions(wallet!!).toString())
 
             // if wallet is reused after the destructor it should sigsev
             lib.destructor(wallet!!)

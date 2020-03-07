@@ -1,5 +1,7 @@
 package org.magicalbitcoin.wallet.Types
 
+import com.fasterxml.jackson.databind.JsonNode
+
 enum class Network {
     regtest,
     testnet,
@@ -26,6 +28,16 @@ data class TxOut(
 data class UTXO(
     var outpoint: String,
     var txout: TxOut
+)
+
+// FIXME: all Longs should be unsigned
+data class TransactionDetails(
+    val transaction: JsonNode?,
+    val txid: String,
+    val timestamp: Long,
+    val received: Long,
+    val sent: Long,
+    val height: Long? // FIXME: should be UInt
 )
 
 // FIXME: Those should be decleared as UBytes, but jackson doesn't know how to parse them. so we use Ints that are larger and won't overflow to negative
