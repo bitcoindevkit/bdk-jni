@@ -1,17 +1,19 @@
-use std::path::PathBuf;
 use std::any::TypeId;
-use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
+use std::path::PathBuf;
 
+use serde::ser::{SerializeStruct, Serializer};
 use serde::{Deserialize, Serialize};
-use serde::ser::{Serializer, SerializeStruct};
 
 #[allow(unused_imports)]
 use log::{debug, error, info, trace};
 
 use magical_bitcoin_wallet::bitcoin;
+use magical_bitcoin_wallet::electrum_client::client::{
+    ElectrumPlaintextStream, ElectrumProxyStream, ElectrumSslStream,
+};
 use magical_bitcoin_wallet::sled;
-use magical_bitcoin_wallet::electrum_client::client::{ElectrumPlaintextStream, ElectrumSslStream, ElectrumProxyStream};
 use magical_bitcoin_wallet::{Client, Wallet};
 
 use bitcoin::Network;
@@ -36,7 +38,7 @@ enum MagicalRequest {
     GetNewAddress {
         wallet: IntermediatePtr,
     },
-    /*Sync {
+    Sync {
         wallet: IntermediatePtr,
 
         max_address: Option<u32>,
@@ -47,7 +49,7 @@ enum MagicalRequest {
     },
     GetBalance {
         wallet: IntermediatePtr,
-    }, */
+    },
 }
 
 #[derive(Debug)]
@@ -55,7 +57,7 @@ enum MagicalError {
     WalletError(magical_bitcoin_wallet::error::Error),
     ElectrumClientError(magical_bitcoin_wallet::electrum_client::types::Error),
     Serialization(serde_json::error::Error),
-    
+
     Unsupported(String),
     CantOpenDb(sled::Error, PathBuf),
     CantOpenTree(sled::Error, String),
@@ -118,7 +120,7 @@ impl<T: 'static> From<T> for OpaquePtr<T> {
     fn from(other: T) -> Self {
         OpaquePtr {
             id: TypeId::of::<T>(),
-            raw: Box::into_raw(Box::new(other))
+            raw: Box::into_raw(Box::new(other)),
         }
     }
 }
@@ -132,61 +134,129 @@ struct IntermediatePtr {
 fn do_constructor_call(req: MagicalRequest) -> Result<serde_json::Value, MagicalError> {
     use crate::MagicalRequest::*;
 
-    if let Constructor{name, network, path, descriptor, change_descriptor, electrum_url, electrum_validate_domain, electrum_proxy} = req {
-            let database = sled::open(path.clone()).map_err(|e| MagicalError::CantOpenDb(e, path.clone()))?;
-            let tree = database
-                .open_tree(name.clone())
-                .map_err(|e| MagicalError::CantOpenTree(e, name.clone()))?;
+    if let Constructor {
+        name,
+        network,
+        path,
+        descriptor,
+        change_descriptor,
+        electrum_url,
+        electrum_validate_domain,
+        electrum_proxy,
+    } = req
+    {
+        let database =
+            sled::open(path.clone()).map_err(|e| MagicalError::CantOpenDb(e, path.clone()))?;
+        let tree = database
+            .open_tree(name.clone())
+            .map_err(|e| MagicalError::CantOpenTree(e, name.clone()))?;
 
-            debug!("Database at {} name {} opened successfully", path.as_path().display(), name);
+        debug!(
+            "Database at {} name {} opened successfully",
+            path.as_path().display(),
+            name
+        );
 
-            if let Some(proxy) = electrum_proxy {
-                let proxy = proxy.replacen("socks5://", "", 1);
-                let electrum_url = if electrum_url.starts_with("ssl://") {
-                    return Err(MagicalError::Unsupported("SSL is not supported over a proxy".to_string()));
-                } else {
-                    electrum_url.replacen("tcp://", "", 1)
-                };
-
-                let client = Client::new_proxy(electrum_url.as_str(), proxy)?;
-                let ptr: OpaquePtr<_> = Wallet::new(&descriptor, change_descriptor.as_deref(), network, tree, client)?.into();
-                serde_json::to_value(&ptr).map_err(MagicalError::Serialization)
-            } else if electrum_url.starts_with("ssl://") {
-                let electrum_url = electrum_url.replacen("ssl://", "", 1);
-                let client = Client::new_ssl(electrum_url.as_str(), electrum_validate_domain.unwrap_or(false))?;
-                let ptr: OpaquePtr<_> = Wallet::new(&descriptor, change_descriptor.as_deref(), network, tree, client)?.into();
-                serde_json::to_value(&ptr).map_err(MagicalError::Serialization)
+        if let Some(proxy) = electrum_proxy {
+            let proxy = proxy.replacen("socks5://", "", 1);
+            let electrum_url = if electrum_url.starts_with("ssl://") {
+                return Err(MagicalError::Unsupported(
+                    "SSL is not supported over a proxy".to_string(),
+                ));
             } else {
-                let electrum_url = electrum_url.replacen("tcp://", "", 1);
-                let client = Client::new(electrum_url)?;
-                let ptr: OpaquePtr<_> = Wallet::new(&descriptor, change_descriptor.as_deref(), network, tree, client)?.into();
-                serde_json::to_value(&ptr).map_err(MagicalError::Serialization)
-            }
+                electrum_url.replacen("tcp://", "", 1)
+            };
+
+            let client = Client::new_proxy(electrum_url.as_str(), proxy)?;
+            let ptr: OpaquePtr<_> = Wallet::new(
+                &descriptor,
+                change_descriptor.as_deref(),
+                network,
+                tree,
+                client,
+            )?
+            .into();
+            serde_json::to_value(&ptr).map_err(MagicalError::Serialization)
+        } else if electrum_url.starts_with("ssl://") {
+            let electrum_url = electrum_url.replacen("ssl://", "", 1);
+            let client = Client::new_ssl(
+                electrum_url.as_str(),
+                electrum_validate_domain.unwrap_or(false),
+            )?;
+            let ptr: OpaquePtr<_> = Wallet::new(
+                &descriptor,
+                change_descriptor.as_deref(),
+                network,
+                tree,
+                client,
+            )?
+            .into();
+            serde_json::to_value(&ptr).map_err(MagicalError::Serialization)
+        } else {
+            let electrum_url = electrum_url.replacen("tcp://", "", 1);
+            let client = Client::new(electrum_url)?;
+            let ptr: OpaquePtr<_> = Wallet::new(
+                &descriptor,
+                change_descriptor.as_deref(),
+                network,
+                tree,
+                client,
+            )?
+            .into();
+            serde_json::to_value(&ptr).map_err(MagicalError::Serialization)
+        }
     } else {
-        Err(MagicalError::Unsupported("Called `do_constructor_call` with a non-Constructor request".to_string()))
+        Err(MagicalError::Unsupported(
+            "Called `do_constructor_call` with a non-Constructor request".to_string(),
+        ))
     }
 }
 
-fn do_wallet_call<S, D>(wallet: Box<Wallet<S, D>>, req: MagicalRequest) -> Result<serde_json::Value, MagicalError>
+fn do_wallet_call<S, D>(
+    wallet: Box<Wallet<S, D>>,
+    req: MagicalRequest,
+) -> Result<serde_json::Value, MagicalError>
 where
     S: std::io::Read + std::io::Write,
     D: magical_bitcoin_wallet::database::BatchDatabase,
 {
     use crate::MagicalRequest::*;
 
-    match req {
-        Constructor{..} => return Err(MagicalError::Unsupported("Called `do_wallet_call` with a Constructor request".to_string())),
-        GetNewAddress{..} => serde_json::to_value(&wallet.get_new_address()?).map_err(MagicalError::Serialization),
-    }
+    let resp = match req {
+        Constructor { .. } => {
+            return Err(MagicalError::Unsupported(
+                "Called `do_wallet_call` with a Constructor request".to_string(),
+            ))
+        }
+        GetNewAddress { .. } => {
+            serde_json::to_value(&wallet.get_new_address()?).map_err(MagicalError::Serialization)
+        }
+        Sync {
+            max_address,
+            batch_query_size,
+            ..
+        } => serde_json::to_value(&wallet.sync(max_address, batch_query_size)?)
+            .map_err(MagicalError::Serialization),
+        ListUnspent { .. } => {
+            serde_json::to_value(&wallet.list_unspent()?).map_err(MagicalError::Serialization)
+        }
+        GetBalance { .. } => {
+            serde_json::to_value(&wallet.get_balance()?).map_err(MagicalError::Serialization)
+        }
+    };
+
+    std::mem::forget(wallet);
+
+    resp
 }
 
 /// Expose the JNI interface below
 #[cfg(target_os = "android")]
 #[allow(non_snake_case)]
 pub mod android {
-    use std::ffi::{CString, CStr};
+    use std::ffi::{CStr, CString};
 
-    use jni::objects::{JClass, JString, JObject};
+    use jni::objects::{JClass, JObject, JString};
     use jni::sys::jstring;
     use jni::JNIEnv;
 
@@ -208,7 +278,8 @@ pub mod android {
 
     impl JNIError {
         fn into_string(self, env: &JNIEnv) -> jstring {
-            let serialized = serde_json::to_string(&self).unwrap_or("{\"error\": \"Can't serialize error\", \"code\": -1000}".to_string());
+            let serialized = serde_json::to_string(&self)
+                .unwrap_or("{\"error\": \"Can't serialize error\", \"code\": -1000}".to_string());
             string_to_jstring(env, &serialized).unwrap_or(JObject::null().into_inner())
         }
     }
@@ -221,31 +292,60 @@ pub mod android {
     ) -> jstring {
         use crate::MagicalRequest::*;
 
-        android_logger::init_once(android_logger::Config::default().with_min_level(log::Level::Debug));
+        android_logger::init_once(
+            android_logger::Config::default().with_min_level(log::Level::Debug),
+        );
 
         let incoming_cstr = match env.get_string(incoming_string) {
             Ok(string) => CStr::from_ptr(string.as_ptr()),
-            Err(_) => return JNIError{error: "Invalid input string".to_string(), code: -1001}.into_string(&env),
+            Err(e) => {
+                return JNIError {
+                    error: format!("Invalid input string: {:?}", e),
+                    code: -1001,
+                }
+                .into_string(&env)
+            }
         };
 
         let incoming_str = match incoming_cstr.to_str() {
             Ok(string) => string,
-            Err(_) => return JNIError{error: "Invalid input string encoding".to_string(), code: -1002}.into_string(&env),
+            Err(e) => {
+                return JNIError {
+                    error: format!("Invalid input string encoding: {:?}", e),
+                    code: -1002,
+                }
+                .into_string(&env)
+            }
         };
 
         let deser = match serde_json::from_str::<MagicalRequest>(incoming_str) {
             Ok(req) => req,
-            Err(_) => return JNIError{error: "Cannot deserialize input".to_string(), code: -1003}.into_string(&env),
+            Err(e) => {
+                return JNIError {
+                    error: format!("Cannot deserialize input: {:?}", e),
+                    code: -1003,
+                }
+                .into_string(&env)
+            }
         };
 
         let response_result = match &deser {
-            Constructor{..} => do_constructor_call(deser),
-            GetNewAddress{ref wallet, ..} => {
-                if let Ok(w) = OpaquePtr::<Wallet<ElectrumPlaintextStream, sled::Tree>>::convert_from(wallet) {
+            Constructor { .. } => do_constructor_call(deser),
+            GetNewAddress { ref wallet, .. }
+            | Sync { ref wallet, .. }
+            | ListUnspent { ref wallet, .. }
+            | GetBalance { ref wallet, .. } => {
+                if let Ok(w) =
+                    OpaquePtr::<Wallet<ElectrumPlaintextStream, sled::Tree>>::convert_from(wallet)
+                {
                     do_wallet_call(w.move_out(), deser)
-                } else if let Ok(w) = OpaquePtr::<Wallet<ElectrumSslStream, sled::Tree>>::convert_from(wallet) {
+                } else if let Ok(w) =
+                    OpaquePtr::<Wallet<ElectrumSslStream, sled::Tree>>::convert_from(wallet)
+                {
                     do_wallet_call(w.move_out(), deser)
-                } else if let Ok(w) = OpaquePtr::<Wallet<ElectrumProxyStream, sled::Tree>>::convert_from(wallet) {
+                } else if let Ok(w) =
+                    OpaquePtr::<Wallet<ElectrumProxyStream, sled::Tree>>::convert_from(wallet)
+                {
                     do_wallet_call(w.move_out(), deser)
                 } else {
                     Err(MagicalError::Unsupported("Unknown Wallet type".to_string()))
@@ -255,18 +355,28 @@ pub mod android {
 
         let final_string = match response_result {
             Ok(stuff) => serde_json::to_string(&stuff),
-            Err(e) => return JNIError{error: format!("{:?}", e), code: -1}.into_string(&env),
+            Err(e) => {
+                return JNIError {
+                    error: format!("{:?}", e),
+                    code: -1,
+                }
+                .into_string(&env)
+            }
         };
         let final_string = match final_string {
             Ok(string) => string,
-            Err(e) => return JNIError{error: format!("{:?}", e), code: -1004}.into_string(&env),
+            Err(e) => {
+                return JNIError {
+                    error: format!("{:?}", e),
+                    code: -1004,
+                }
+                .into_string(&env)
+            }
         };
 
         string_to_jstring(&env, &final_string).unwrap_or(JObject::null().into_inner())
     }
 }
-
-
 
 #[cfg(test)]
 mod test {

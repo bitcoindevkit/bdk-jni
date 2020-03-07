@@ -17,7 +17,18 @@ data class WalletConstructor(
     var electrum_proxy: String?
 )
 
-// Those should be decleared as UBytes, but jackson doesn't know how to parse them. so we use Ints that are larger and won't overflow to negative
+data class TxOut(
+    var script_pubkey: String,
+    // FIXME: should be ULong
+    var value: Long
+)
+
+data class UTXO(
+    var outpoint: String,
+    var txout: TxOut
+)
+
+// FIXME: Those should be decleared as UBytes, but jackson doesn't know how to parse them. so we use Ints that are larger and won't overflow to negative
 data class WalletPtr(
     var raw: List<Int>,
     var id: List<Int>
