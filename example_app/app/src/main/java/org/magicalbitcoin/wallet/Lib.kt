@@ -80,5 +80,17 @@ class Lib {
         }
         return json.asLong()
     }
+
+    fun destructor(wallet: WalletPtr) {
+        val node = JsonNodeFactory.instance.objectNode()
+        node.put("wallet", mapper.valueToTree<JsonNode>(wallet))
+        val req = JsonRpc("destructor", node)
+        val reqString = mapper.writeValueAsString(req)
+        val resString = call(reqString)
+        val json: JsonNode = mapper.readValue(resString)
+        if (json.has("error")) {
+            throw Exception(json.get("error").asText())
+        }
+    }
 }
 

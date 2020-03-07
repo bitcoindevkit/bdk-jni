@@ -36,6 +36,10 @@ class MainActivity : AppCompatActivity() {
             Log.i(TAG, lib.get_balance(wallet!!).toString())
             Log.i(TAG, lib.list_unspent(wallet!!).toString())
             Log.i(TAG, lib.get_new_address(wallet!!))
+
+            // if wallet is reused after the destructor it should sigsev
+            lib.destructor(wallet!!)
+            wallet = null
         }
     }
 

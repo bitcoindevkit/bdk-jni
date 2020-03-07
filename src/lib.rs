@@ -35,6 +35,9 @@ enum MagicalRequest {
         // <nothing> | socks5://
         electrum_proxy: Option<String>,
     },
+    Destructor {
+        wallet: IntermediatePtr,
+    },
     GetNewAddress {
         wallet: IntermediatePtr,
     },
@@ -228,6 +231,7 @@ where
                 "Called `do_wallet_call` with a Constructor request".to_string(),
             ))
         }
+        Destructor { .. } => Ok(serde_json::Value::Null),
         GetNewAddress { .. } => {
             serde_json::to_value(&wallet.get_new_address()?).map_err(MagicalError::Serialization)
         }
@@ -245,7 +249,11 @@ where
         }
     };
 
-    std::mem::forget(wallet);
+    if let Destructor { .. } = req {
+        std::mem::drop(wallet);
+    } else {
+        std::mem::forget(wallet);
+    }
 
     resp
 }
@@ -331,10 +339,11 @@ pub mod android {
 
         let response_result = match &deser {
             Constructor { .. } => do_constructor_call(deser),
-            GetNewAddress { ref wallet, .. }
+            Destructor { ref wallet }
+            | GetNewAddress { ref wallet }
             | Sync { ref wallet, .. }
-            | ListUnspent { ref wallet, .. }
-            | GetBalance { ref wallet, .. } => {
+            | ListUnspent { ref wallet }
+            | GetBalance { ref wallet } => {
                 if let Ok(w) =
                     OpaquePtr::<Wallet<ElectrumPlaintextStream, sled::Tree>>::convert_from(wallet)
                 {
