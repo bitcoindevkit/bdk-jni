@@ -1,5 +1,14 @@
 # magical-bitcoin-wallet-jni
 
+Build android library in `.aar` format with:
+```
+./gradlew build
+```
+Gradle will build automatically the native library with rust for all 4 platforms using NDK.
+The output aar library is available at `./build/outputs/aar`.
+
+#### Build native library
+
 Build the library with:
 
 ```

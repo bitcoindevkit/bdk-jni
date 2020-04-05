@@ -2,4 +2,9 @@
 **/*.rs.bk
 Cargo.lock
 
+.idea
+.gradle
+local.properties
 *.swp
+*.iml
+build
