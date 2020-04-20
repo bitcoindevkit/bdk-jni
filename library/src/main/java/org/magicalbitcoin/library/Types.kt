@@ -1,12 +1,15 @@
 package org.magicalbitcoin.wallet.Types
 
+import android.os.Parcelable
 import com.fasterxml.jackson.databind.JsonNode
+import kotlinx.android.parcel.Parcelize
 
 enum class Network {
     regtest,
     testnet,
 }
 
+@Parcelize
 data class WalletConstructor(
     var name: String,
     var network: Network,
@@ -17,7 +20,7 @@ data class WalletConstructor(
     var electrum_url: String,
     var electrum_validate_domain: Boolean?,
     var electrum_proxy: String?
-)
+) : Parcelable
 
 data class TxOut(
     var script_pubkey: String,
