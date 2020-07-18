@@ -18,7 +18,6 @@ data class WalletConstructor(
     var change_descriptor: String?,
 
     var electrum_url: String,
-    var electrum_validate_domain: Boolean?,
     var electrum_proxy: String?
 ) : Parcelable
 
@@ -41,6 +40,29 @@ data class TransactionDetails(
     val received: Long,
     val sent: Long,
     val height: Long? // FIXME: should be UInt
+)
+
+data class CreateTxResponse(
+    val details: TransactionDetails,
+    val psbt: String
+)
+
+data class SignResponse(
+    val psbt: String,
+    val finalized: Boolean
+)
+
+data class RawTransaction(
+    val transaction: String
+)
+
+data class Txid(
+    val txid: String
+)
+
+data class PublicDescriptorsResponse(
+    val external: String,
+    val internal: String?
 )
 
 // FIXME: Those should be decleared as UBytes, but jackson doesn't know how to parse them. so we use Ints that are larger and won't overflow to negative

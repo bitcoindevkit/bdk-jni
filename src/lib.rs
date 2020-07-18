@@ -1,7 +1,12 @@
+#[macro_use]
+extern crate serde_json;
+
 use std::any::TypeId;
 use std::collections::hash_map::DefaultHasher;
+use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
+use std::str::FromStr;
 
 use serde::ser::{SerializeStruct, Serializer};
 use serde::{Deserialize, Serialize};
@@ -10,15 +15,35 @@ use serde::{Deserialize, Serialize};
 use log::{debug, error, info, trace};
 
 use magical_bitcoin_wallet::bitcoin;
-use magical_bitcoin_wallet::electrum_client::client::{
-    ElectrumPlaintextStream, ElectrumProxyStream, ElectrumSslStream,
-};
+use magical_bitcoin_wallet::electrum_client;
 use magical_bitcoin_wallet::sled;
-use magical_bitcoin_wallet::{Client, Wallet};
+use magical_bitcoin_wallet::Wallet;
 
-use bitcoin::Network;
+use magical_bitcoin_wallet::blockchain::ElectrumBlockchain;
+use magical_bitcoin_wallet::types::{ScriptType, TransactionDetails};
 
-#[derive(Debug, Clone, Deserialize)]
+use electrum_client::Client;
+
+use bitcoin::consensus::encode::{deserialize, serialize};
+use bitcoin::hashes::hex::{FromHex, ToHex};
+use bitcoin::util::psbt::PartiallySignedTransaction;
+use bitcoin::{Address, Network, OutPoint, Transaction};
+
+#[derive(Debug, Deserialize)]
+struct KotlinPair<F: std::fmt::Debug, S: std::fmt::Debug> {
+    #[serde(bound(serialize = "F: Deserialize<'de>"))]
+    first: F,
+    #[serde(bound(serialize = "F: Deserialize<'de>"))]
+    second: S,
+}
+
+impl<F: std::fmt::Debug, S: std::fmt::Debug> From<KotlinPair<F, S>> for (F, S) {
+    fn from(other: KotlinPair<F, S>) -> Self {
+        (other.first, other.second)
+    }
+}
+
+#[derive(Debug, Deserialize)]
 #[serde(tag = "method", content = "params")]
 #[serde(rename_all = "snake_case")]
 enum MagicalRequest {
@@ -29,10 +54,7 @@ enum MagicalRequest {
         descriptor: String,
         change_descriptor: Option<String>,
 
-        // <nothing> = tcp:// | tcp:// | ssl://
         electrum_url: String,
-        electrum_validate_domain: Option<bool>,
-        // <nothing> | socks5://
         electrum_proxy: Option<String>,
     },
     Destructor {
@@ -58,17 +80,51 @@ enum MagicalRequest {
 
         include_raw: Option<bool>,
     },
+    CreateTx {
+        wallet: IntermediatePtr,
+
+        fee_rate: f32,
+        // store the amounts as strings to avoid rounding errors
+        addressees: Vec<KotlinPair<String, String>>,
+
+        unspendable: Option<Vec<String>>,
+        utxos: Option<Vec<String>>,
+        send_all: Option<bool>,
+        policy: Option<BTreeMap<String, Vec<usize>>>,
+    },
+    Sign {
+        wallet: IntermediatePtr,
+
+        psbt: String,
+
+        assume_height: Option<u32>,
+    },
+    ExtractPsbt {
+        wallet: IntermediatePtr,
+
+        psbt: String,
+    },
+    Broadcast {
+        wallet: IntermediatePtr,
+
+        raw_tx: String,
+    },
+    PublicDescriptors {
+        wallet: IntermediatePtr,
+    },
 }
 
 #[derive(Debug)]
 enum MagicalError {
     WalletError(magical_bitcoin_wallet::error::Error),
-    ElectrumClientError(magical_bitcoin_wallet::electrum_client::types::Error),
+    ElectrumClientError(magical_bitcoin_wallet::electrum_client::Error),
     Serialization(serde_json::error::Error),
 
     Unsupported(String),
     CantOpenDb(sled::Error, PathBuf),
     CantOpenTree(sled::Error, String),
+
+    Parsing(String),
 }
 
 impl From<magical_bitcoin_wallet::error::Error> for MagicalError {
@@ -77,8 +133,8 @@ impl From<magical_bitcoin_wallet::error::Error> for MagicalError {
     }
 }
 
-impl From<magical_bitcoin_wallet::electrum_client::types::Error> for MagicalError {
-    fn from(other: magical_bitcoin_wallet::electrum_client::types::Error) -> Self {
+impl From<magical_bitcoin_wallet::electrum_client::Error> for MagicalError {
+    fn from(other: magical_bitcoin_wallet::electrum_client::Error) -> Self {
         MagicalError::ElectrumClientError(other)
     }
 }
@@ -149,7 +205,6 @@ fn do_constructor_call(req: MagicalRequest) -> Result<serde_json::Value, Magical
         descriptor,
         change_descriptor,
         electrum_url,
-        electrum_validate_domain,
         electrum_proxy,
     } = req
     {
@@ -165,54 +220,17 @@ fn do_constructor_call(req: MagicalRequest) -> Result<serde_json::Value, Magical
             name
         );
 
-        if let Some(proxy) = electrum_proxy {
-            let proxy = proxy.replacen("socks5://", "", 1);
-            let electrum_url = if electrum_url.starts_with("ssl://") {
-                return Err(MagicalError::Unsupported(
-                    "SSL is not supported over a proxy".to_string(),
-                ));
-            } else {
-                electrum_url.replacen("tcp://", "", 1)
-            };
+        let client = Client::new(&electrum_url, electrum_proxy.as_deref())?;
+        let ptr: OpaquePtr<_> = Wallet::new(
+            &descriptor,
+            change_descriptor.as_deref(),
+            network,
+            tree,
+            ElectrumBlockchain::from(client),
+        )?
+        .into();
 
-            let client = Client::new_proxy(electrum_url.as_str(), proxy)?;
-            let ptr: OpaquePtr<_> = Wallet::new(
-                &descriptor,
-                change_descriptor.as_deref(),
-                network,
-                tree,
-                client,
-            )?
-            .into();
-            serde_json::to_value(&ptr).map_err(MagicalError::Serialization)
-        } else if electrum_url.starts_with("ssl://") {
-            let electrum_url = electrum_url.replacen("ssl://", "", 1);
-            let client = Client::new_ssl(
-                electrum_url.as_str(),
-                electrum_validate_domain.unwrap_or(false),
-            )?;
-            let ptr: OpaquePtr<_> = Wallet::new(
-                &descriptor,
-                change_descriptor.as_deref(),
-                network,
-                tree,
-                client,
-            )?
-            .into();
-            serde_json::to_value(&ptr).map_err(MagicalError::Serialization)
-        } else {
-            let electrum_url = electrum_url.replacen("tcp://", "", 1);
-            let client = Client::new(electrum_url)?;
-            let ptr: OpaquePtr<_> = Wallet::new(
-                &descriptor,
-                change_descriptor.as_deref(),
-                network,
-                tree,
-                client,
-            )?
-            .into();
-            serde_json::to_value(&ptr).map_err(MagicalError::Serialization)
-        }
+        serde_json::to_value(&ptr).map_err(MagicalError::Serialization)
     } else {
         Err(MagicalError::Unsupported(
             "Called `do_constructor_call` with a non-Constructor request".to_string(),
@@ -225,10 +243,16 @@ fn do_wallet_call<S, D>(
     req: MagicalRequest,
 ) -> Result<serde_json::Value, MagicalError>
 where
-    S: std::io::Read + std::io::Write,
+    S: magical_bitcoin_wallet::blockchain::OnlineBlockchain,
     D: magical_bitcoin_wallet::database::BatchDatabase,
 {
     use crate::MagicalRequest::*;
+
+    let destroy_at_end = if let Destructor { .. } = req {
+        true
+    } else {
+        false
+    };
 
     let resp = match req {
         Constructor { .. } => {
@@ -256,9 +280,129 @@ where
             serde_json::to_value(&wallet.list_transactions(include_raw.unwrap_or(false))?)
                 .map_err(MagicalError::Serialization)
         }
+        CreateTx {
+            fee_rate,
+            unspendable,
+            utxos,
+            addressees,
+            send_all,
+            policy,
+            ..
+        } => {
+            #[derive(Serialize)]
+            struct CreateTxResponse {
+                details: TransactionDetails,
+                psbt: String,
+            }
+
+            let utxos: Option<Vec<OutPoint>> = utxos
+                .map(|u| {
+                    u.into_iter()
+                        .map(|s| s.parse())
+                        .collect::<Result<Vec<_>, _>>()
+                })
+                .transpose()
+                .map_err(|e| MagicalError::Parsing(format!("{:?}", e)))?;
+            let unspendable: Option<Vec<OutPoint>> = unspendable
+                .map(|u| {
+                    u.into_iter()
+                        .map(|s| s.parse())
+                        .collect::<Result<Vec<_>, _>>()
+                })
+                .transpose()
+                .map_err(|e| MagicalError::Parsing(format!("{:?}", e)))?;
+
+            let addressees = addressees
+                .into_iter()
+                .map(|pair| -> Result<_, Box<dyn std::error::Error>> {
+                    let (a, v) = pair.into();
+                    Ok((Address::from_str(&a)?, v.parse()?))
+                })
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|e| MagicalError::Parsing(format!("{:?}", e)))?;
+            let send_all = send_all.unwrap_or(false);
+            let fee_perkb = fee_rate * 1e-5;
+
+            let (psbt, details) = wallet.create_tx(
+                addressees,
+                send_all,
+                fee_perkb,
+                policy.clone(),
+                utxos,
+                unspendable,
+            )?;
+            serde_json::to_value(&CreateTxResponse {
+                details,
+                psbt: base64::encode(&serialize(&psbt)),
+            })
+            .map_err(MagicalError::Serialization)
+        }
+        Sign {
+            psbt,
+            assume_height,
+            ..
+        } => {
+            #[derive(Serialize)]
+            struct SignResponse {
+                psbt: String,
+                finalized: bool,
+            }
+
+            let psbt =
+                base64::decode(&psbt).map_err(|e| MagicalError::Parsing(format!("{:?}", e)))?;
+            let psbt = deserialize(&psbt).map_err(|e| MagicalError::Parsing(format!("{:?}", e)))?;
+
+            let (psbt, finalized) = wallet.sign(psbt, assume_height)?;
+
+            serde_json::to_value(&SignResponse {
+                psbt: base64::encode(&serialize(&psbt)),
+                finalized,
+            })
+            .map_err(MagicalError::Serialization)
+        }
+        ExtractPsbt { psbt, .. } => {
+            let psbt =
+                base64::decode(&psbt).map_err(|e| MagicalError::Parsing(format!("{:?}", e)))?;
+            let psbt: PartiallySignedTransaction =
+                deserialize(&psbt).map_err(|e| MagicalError::Parsing(format!("{:?}", e)))?;
+
+            Ok(json!({
+                "transaction": serialize(&psbt.extract_tx()).to_hex(),
+            }))
+        }
+        Broadcast { raw_tx, .. } => {
+            let raw_tx: Vec<u8> = FromHex::from_hex(&raw_tx)
+                .map_err(|e| MagicalError::Parsing(format!("{:?}", e)))?;
+            let raw_tx: Transaction =
+                deserialize(&raw_tx).map_err(|e| MagicalError::Parsing(format!("{:?}", e)))?;
+
+            let txid = wallet.broadcast(raw_tx)?;
+
+            Ok(json!({
+                "txid": txid.to_hex(),
+            }))
+        }
+        PublicDescriptors { .. } => {
+            #[derive(Serialize)]
+            struct PublicDescriptorsResponse {
+                external: String,
+                internal: Option<String>,
+            }
+
+            let external = wallet
+                .public_descriptor(ScriptType::External)?
+                .unwrap()
+                .to_string();
+            let internal = wallet
+                .public_descriptor(ScriptType::Internal)?
+                .map(|d| d.to_string());
+
+            serde_json::to_value(&PublicDescriptorsResponse { external, internal })
+                .map_err(MagicalError::Serialization)
+        }
     };
 
-    if let Destructor { .. } = req {
+    if destroy_at_end {
         std::mem::drop(wallet);
     } else {
         std::mem::forget(wallet);
@@ -353,21 +497,20 @@ pub mod android {
             | Sync { ref wallet, .. }
             | ListUnspent { ref wallet }
             | GetBalance { ref wallet }
-            | ListTransactions { ref wallet, .. } => {
+            | ListTransactions { ref wallet, .. }
+            | CreateTx { ref wallet, .. }
+            | Sign { ref wallet, .. }
+            | ExtractPsbt { ref wallet, .. }
+            | Broadcast { ref wallet, .. }
+            | PublicDescriptors { ref wallet } => {
                 if let Ok(w) =
-                    OpaquePtr::<Wallet<ElectrumPlaintextStream, sled::Tree>>::convert_from(wallet)
-                {
-                    do_wallet_call(w.move_out(), deser)
-                } else if let Ok(w) =
-                    OpaquePtr::<Wallet<ElectrumSslStream, sled::Tree>>::convert_from(wallet)
-                {
-                    do_wallet_call(w.move_out(), deser)
-                } else if let Ok(w) =
-                    OpaquePtr::<Wallet<ElectrumProxyStream, sled::Tree>>::convert_from(wallet)
+                    OpaquePtr::<Wallet<ElectrumBlockchain, sled::Tree>>::convert_from(wallet)
                 {
                     do_wallet_call(w.move_out(), deser)
                 } else {
-                    Err(MagicalError::Unsupported("Unknown Wallet type".to_string()))
+                    Err(MagicalError::Unsupported(
+                        "Invalid wallet pointer".to_string(),
+                    ))
                 }
             }
         };

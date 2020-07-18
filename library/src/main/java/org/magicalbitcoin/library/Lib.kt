@@ -114,7 +114,86 @@ class Lib {
             throw Exception(json.get("error").asText())
         }
         // FIXME: would be better to re-use the jsonnode instead of parsing the string again
-        return mapper.readValue(resString, mapper.typeFactory.constructCollectionType(List::class.java, TransactionDetails::class.java))
+        return mapper.readValue(resString, mapper.typeFactory.constructCollectionType(List::class.java, UTXO::class.java))
+    }
+
+    fun create_tx(wallet: WalletPtr, fee_rate: Float, addressees: List<Pair<String, String>>, send_all: Boolean?=false, utxos: List<String>?=null, unspendable: List<String>?=null, policy: Map<String, List<String>>?=null): CreateTxResponse {
+        val node = JsonNodeFactory.instance.objectNode()
+        node.put("wallet", mapper.valueToTree<JsonNode>(wallet))
+        node.put("fee_rate", mapper.valueToTree<JsonNode>(fee_rate))
+        node.put("addressees", mapper.valueToTree<JsonNode>(addressees))
+        node.put("send_all", mapper.valueToTree<JsonNode>(send_all))
+        node.put("utxos", mapper.valueToTree<JsonNode>(utxos))
+        node.put("unspendable", mapper.valueToTree<JsonNode>(unspendable))
+        node.put("policy", mapper.valueToTree<JsonNode>(policy))
+        val req = JsonRpc("create_tx", node)
+        val reqString = mapper.writeValueAsString(req)
+        val resString = call(reqString)
+        val json: JsonNode = mapper.readValue(resString)
+        if (json.has("error")) {
+            throw Exception(json.get("error").asText())
+        }
+        // FIXME: would be better to re-use the jsonnode instead of parsing the string again
+        return mapper.treeToValue(json, CreateTxResponse::class.java)
+    }
+
+    fun sign(wallet: WalletPtr, psbt: String, assume_height: Int?=null): SignResponse {
+        val node = JsonNodeFactory.instance.objectNode()
+        node.put("wallet", mapper.valueToTree<JsonNode>(wallet))
+        node.put("psbt", mapper.valueToTree<JsonNode>(psbt))
+        node.put("assume_height", mapper.valueToTree<JsonNode>(assume_height))
+        val req = JsonRpc("sign", node)
+        val reqString = mapper.writeValueAsString(req)
+        val resString = call(reqString)
+        val json: JsonNode = mapper.readValue(resString)
+        if (json.has("error")) {
+            throw Exception(json.get("error").asText())
+        }
+        // FIXME: would be better to re-use the jsonnode instead of parsing the string again
+        return mapper.treeToValue(json, SignResponse::class.java)
+    }
+
+    fun extract_psbt(wallet: WalletPtr, psbt: String): RawTransaction {
+        val node = JsonNodeFactory.instance.objectNode()
+        node.put("wallet", mapper.valueToTree<JsonNode>(wallet))
+        node.put("psbt", mapper.valueToTree<JsonNode>(psbt))
+        val req = JsonRpc("extract_psbt", node)
+        val reqString = mapper.writeValueAsString(req)
+        val resString = call(reqString)
+        val json: JsonNode = mapper.readValue(resString)
+        if (json.has("error")) {
+            throw Exception(json.get("error").asText())
+        }
+        // FIXME: would be better to re-use the jsonnode instead of parsing the string again
+        return mapper.treeToValue(json, RawTransaction::class.java)
+    }
+
+    fun broadcast(wallet: WalletPtr, raw_tx: String): Txid {
+        val node = JsonNodeFactory.instance.objectNode()
+        node.put("wallet", mapper.valueToTree<JsonNode>(wallet))
+        node.put("raw_tx", mapper.valueToTree<JsonNode>(raw_tx))
+        val req = JsonRpc("broadcast", node)
+        val reqString = mapper.writeValueAsString(req)
+        val resString = call(reqString)
+        val json: JsonNode = mapper.readValue(resString)
+        if (json.has("error")) {
+            throw Exception(json.get("error").asText())
+        }
+        // FIXME: would be better to re-use the jsonnode instead of parsing the string again
+        return mapper.treeToValue(json, Txid::class.java)
+    }
+
+    fun public_descriptors(wallet: WalletPtr): PublicDescriptorsResponse {
+        val node = JsonNodeFactory.instance.objectNode()
+        node.put("wallet", mapper.valueToTree<JsonNode>(wallet))
+        val req = JsonRpc("public_descriptors", node)
+        val reqString = mapper.writeValueAsString(req)
+        val resString = call(reqString)
+        val json: JsonNode = mapper.readValue(resString)
+        if (json.has("error")) {
+            throw Exception(json.get("error").asText())
+        }
+        // FIXME: would be better to re-use the jsonnode instead of parsing the string again
+        return mapper.treeToValue(json, PublicDescriptorsResponse::class.java)
     }
 }
-
