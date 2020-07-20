@@ -102,7 +102,7 @@ class Lib {
         return json.asLong()
     }
 
-    fun list_transactions(wallet: WalletPtr, include_raw: Boolean?=false): List<UTXO> {
+    fun list_transactions(wallet: WalletPtr, include_raw: Boolean?=false): List<TransactionDetails> {
         val node = JsonNodeFactory.instance.objectNode()
         node.put("wallet", mapper.valueToTree<JsonNode>(wallet))
         node.put("include_raw", mapper.valueToTree<JsonNode>(include_raw))
@@ -114,7 +114,7 @@ class Lib {
             throw Exception(json.get("error").asText())
         }
         // FIXME: would be better to re-use the jsonnode instead of parsing the string again
-        return mapper.readValue(resString, mapper.typeFactory.constructCollectionType(List::class.java, UTXO::class.java))
+        return mapper.readValue(resString, mapper.typeFactory.constructCollectionType(List::class.java, TransactionDetails::class.java))
     }
 
     fun create_tx(wallet: WalletPtr, fee_rate: Float, addressees: List<Pair<String, String>>, send_all: Boolean?=false, utxos: List<String>?=null, unspendable: List<String>?=null, policy: Map<String, List<String>>?=null): CreateTxResponse {
