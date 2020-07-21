@@ -1,0 +1,113 @@
+# From https://github.com/mmcc007/test_emulators
+#
+language: rust
+dist: bionic
+
+# specify global envs and jobs
+env:
+  global:
+    - TERM=dumb # forces gradle to use plaintext output
+    - ANDROID_TOOLS=4333796 # android-28
+    - ANDROID_HOME=${HOME}/android-sdk
+    - GRAVIS="https://raw.githubusercontent.com/DanySK/Gravis-CI/master/"
+    - JDK="1.8" # the JDK used for running tests
+    - NDK_VERSION="21.3.6528147"
+    - TOOLS=${ANDROID_HOME}/tools
+    # PATH order is incredibly important. e.g. the 'emulator' script exists in more than one place!
+    - PATH=${ANDROID_HOME}:${ANDROID_HOME}/emulator:${TOOLS}:${TOOLS}/bin:${ANDROID_HOME}/platform-tools:${PATH}
+    - PATH=${HOME}/.pub-cache/bin:${PATH}
+
+  # matrix of APIxABIxGOO
+  # (see "sdkmanager --list --verbose| grep ^system-images" for full list)
+  jobs:
+    - RUN_EMULATOR=1    BUILD_TARGETS=x86_64                      API=28 ABI=x86_64      GOO=default
+    - RUN_EMULATOR=1    BUILD_TARGETS=i686                        API=28 ABI=x86         GOO=default
+    - RUN_EMULATOR=0    BUILD_TARGETS=aarch64
+    - RUN_EMULATOR=0    BUILD_TARGETS=armv7
+    - RUN_EMULATOR=0    BUILD_TARGETS=aarch64,armv7,x86_64,i686
+
+before_install:
+  - java -version
+
+  # Set up JDK 8 for Android SDK
+  - curl "${GRAVIS}.install-jdk-travis.sh" --output ~/.install-jdk-travis.sh
+  - export TARGET_JDK="${JDK}"
+  - JDK="1.8" # used when running sdkmanager
+  - source ~/.install-jdk-travis.sh
+
+  # Set up Android SDK
+  - wget -q "https://dl.google.com/android/repository/sdk-tools-linux-$ANDROID_TOOLS.zip" -O android-sdk-tools.zip
+  - unzip -q android-sdk-tools.zip -d ${ANDROID_HOME}
+  - rm android-sdk-tools.zip
+
+  # Avoid harmless sdkmanager warning
+  - mkdir ~/.android
+  - echo 'count=0' > ~/.android/repositories.cfg
+
+  # Accept licenses before installing components, no need to echo y for each component
+  - yes | sdkmanager --licenses >/dev/null
+
+  # Install Rust targets
+  - rustup target add x86_64-linux-android
+  - rustup target add i686-linux-android
+  - rustup target add aarch64-linux-android
+  - rustup target add armv7-linux-androideabi
+
+install:
+  # Download SDK tools
+  - sdkmanager "platform-tools" >/dev/null
+  - sdkmanager "tools" >/dev/null # A second time per Travis docs, gets latest versions
+  - sdkmanager "build-tools;28.0.3" >/dev/null # Implicit gradle dependency - gradle drives changes
+  - sdkmanager "platforms;android-29" >/dev/null # We need the API of the current compileSdkVersion from gradle.properties  -
+
+  - sdkmanager "ndk;${NDK_VERSION}" >/dev/null # Install the NDK to build our library
+  - export NDK_HOME="${ANDROID_HOME}/ndk/${NDK_VERSION}"
+  - |
+    if [[ $RUN_EMULATOR -eq 1 ]]; then
+      ./script/install-emulator.sh || exit 1
+      ${ANDROID_HOME}/emulator/emulator -version || exit 1
+      ./script/start-emulator.sh || exit 1
+    fi
+
+  - sdkmanager "extras;android;m2repository" >/dev/null
+
+  # Switch back to our target JDK version to build and run tests
+  - JDK="${TARGET_JDK}"
+  - source ~/.install-jdk-travis.sh
+
+before_script:
+  - |
+    if [[ $RUN_EMULATOR -eq 1 ]]; then
+      # wait for emulator to finish startup
+      ./script/android-wait-for-emulator.sh || exit 1
+      # unlock screen
+      adb shell input keyevent 82 &
+    fi
+
+script:
+  # build first
+  - ./gradlew build
+  - |
+    if [[ $RUN_EMULATOR -eq 1 ]]; then
+      # start logcat in background
+      adb logcat *:S TestRunner:V &
+      # run the tests
+      ./gradlew connectedDebugAndroidTest || exit 1
+    fi
+
+notifications:
+  email: false
+
+before_cache:
+  - rm -rf "$TRAVIS_HOME/.cargo/registry/src"
+cache: cargo
+
+#before_cache:
+#  - rm -f $HOME/.gradle/caches/modules-2/modules-2.lock
+#  - curl "${GRAVIS}.clean_gradle_cache.sh" --output ~/.clean_gradle_cache.sh
+#  - bash ~/.clean_gradle_cache.sh
+#
+#cache:
+#  directories:
+#    - $HOME/.gradle/caches/
+#    - $HOME/.gradle/wrapper/

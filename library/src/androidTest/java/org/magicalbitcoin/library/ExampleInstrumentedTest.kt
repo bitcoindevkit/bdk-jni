@@ -41,7 +41,7 @@ class ExampleInstrumentedTest {
     fun constructor() {
         val dir = createTempDir()
         val descriptor = "wpkh(tprv8ZgxMBicQKsPexGYyaFwnAsCXCjmz2FaTm6LtesyyihjbQE3gRMfXqQBXKM43DvC1UgRVv1qom1qFxNMSqVAs88qx9PhgFnfGVUdiiDf6j4/0/*)"
-        val electrum = "tcp://testnet.aranguren.org:51001"
+        val electrum = "tcp://electrum.blockstream.info:60001"
         wallet = Lib().constructor(WalletConstructor("testnet", Network.regtest, dir.toString(), descriptor, null, electrum, null))
         Lib().sync(wallet)
     }
