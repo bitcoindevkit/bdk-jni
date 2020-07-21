@@ -129,7 +129,12 @@ enum MagicalError {
 
 impl From<magical_bitcoin_wallet::error::Error> for MagicalError {
     fn from(other: magical_bitcoin_wallet::error::Error) -> Self {
-        MagicalError::WalletError(other)
+        match other {
+            magical_bitcoin_wallet::error::Error::Electrum(e) => {
+                MagicalError::ElectrumClientError(e)
+            }
+            e => MagicalError::WalletError(e),
+        }
     }
 }
 
