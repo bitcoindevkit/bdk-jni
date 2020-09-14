@@ -1,5 +1,5 @@
 [package]
-name = "magical-bitcoin-wallet-jni"
+name = "bdk-jni"
 version = "0.1.0"
 authors = ["Alekos Filini <alekos.filini@gmail.com>"]
 edition = "2018"
@@ -12,7 +12,7 @@ android_logger = "0.8"
 crate-type = ["dylib"]
 
 [dependencies]
-magical-bitcoin-wallet = { git = "https://github.com/MagicalBitcoin/magical-bitcoin-wallet.git", rev = "123984e" }
+bdk = { git = "https://github.com/bitcoindevkit/bdk.git", rev = "123984e", package = "magical-bitcoin-wallet" }
 log = "0.4.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

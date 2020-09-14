@@ -1,4 +1,4 @@
-package org.magicalbitcoin.wallet.Types
+package org.bitcoindevkit.library.Types
 
 import android.os.Parcelable
 import com.fasterxml.jackson.databind.JsonNode

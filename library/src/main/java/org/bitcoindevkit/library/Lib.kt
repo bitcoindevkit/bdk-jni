@@ -1,6 +1,6 @@
-package org.magicalbitcoin.wallet
+package org.bitcoindevkit.library
 
-import org.magicalbitcoin.wallet.Types.*
+import org.bitcoindevkit.library.Types.*
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.JsonNodeFactory
@@ -20,7 +20,7 @@ class Lib {
     companion object {
         @JvmStatic
         fun load() {
-            System.loadLibrary("magical_bitcoin_wallet_jni")
+            System.loadLibrary("bdk_jni")
         }
     }
 

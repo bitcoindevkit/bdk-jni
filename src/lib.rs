@@ -14,13 +14,13 @@ use serde::{Deserialize, Serialize};
 #[allow(unused_imports)]
 use log::{debug, error, info, trace};
 
-use magical_bitcoin_wallet::bitcoin;
-use magical_bitcoin_wallet::electrum_client;
-use magical_bitcoin_wallet::sled;
-use magical_bitcoin_wallet::Wallet;
+use bdk::bitcoin;
+use bdk::electrum_client;
+use bdk::sled;
+use bdk::Wallet;
 
-use magical_bitcoin_wallet::blockchain::ElectrumBlockchain;
-use magical_bitcoin_wallet::types::{ScriptType, TransactionDetails};
+use bdk::blockchain::ElectrumBlockchain;
+use bdk::types::{ScriptType, TransactionDetails};
 
 use electrum_client::Client;
 
@@ -46,7 +46,7 @@ impl<F: std::fmt::Debug, S: std::fmt::Debug> From<KotlinPair<F, S>> for (F, S) {
 #[derive(Debug, Deserialize)]
 #[serde(tag = "method", content = "params")]
 #[serde(rename_all = "snake_case")]
-enum MagicalRequest {
+enum BDKRequest {
     Constructor {
         name: String,
         network: Network,
@@ -116,8 +116,8 @@ enum MagicalRequest {
 
 #[derive(Debug)]
 enum MagicalError {
-    WalletError(magical_bitcoin_wallet::error::Error),
-    ElectrumClientError(magical_bitcoin_wallet::electrum_client::Error),
+    WalletError(bdk::error::Error),
+    ElectrumClientError(bdk::electrum_client::Error),
     Serialization(serde_json::error::Error),
 
     Unsupported(String),
@@ -127,19 +127,17 @@ enum MagicalError {
     Parsing(String),
 }
 
-impl From<magical_bitcoin_wallet::error::Error> for MagicalError {
-    fn from(other: magical_bitcoin_wallet::error::Error) -> Self {
+impl From<bdk::error::Error> for MagicalError {
+    fn from(other: bdk::error::Error) -> Self {
         match other {
-            magical_bitcoin_wallet::error::Error::Electrum(e) => {
-                MagicalError::ElectrumClientError(e)
-            }
+            bdk::error::Error::Electrum(e) => MagicalError::ElectrumClientError(e),
             e => MagicalError::WalletError(e),
         }
     }
 }
 
-impl From<magical_bitcoin_wallet::electrum_client::Error> for MagicalError {
-    fn from(other: magical_bitcoin_wallet::electrum_client::Error) -> Self {
+impl From<bdk::electrum_client::Error> for MagicalError {
+    fn from(other: bdk::electrum_client::Error) -> Self {
         MagicalError::ElectrumClientError(other)
     }
 }
@@ -200,8 +198,8 @@ struct IntermediatePtr {
     id: [u8; 8],
 }
 
-fn do_constructor_call(req: MagicalRequest) -> Result<serde_json::Value, MagicalError> {
-    use crate::MagicalRequest::*;
+fn do_constructor_call(req: BDKRequest) -> Result<serde_json::Value, MagicalError> {
+    use crate::BDKRequest::*;
 
     if let Constructor {
         name,
@@ -245,13 +243,13 @@ fn do_constructor_call(req: MagicalRequest) -> Result<serde_json::Value, Magical
 
 fn do_wallet_call<S, D>(
     wallet: Box<Wallet<S, D>>,
-    req: MagicalRequest,
+    req: BDKRequest,
 ) -> Result<serde_json::Value, MagicalError>
 where
-    S: magical_bitcoin_wallet::blockchain::OnlineBlockchain,
-    D: magical_bitcoin_wallet::database::BatchDatabase,
+    S: bdk::blockchain::OnlineBlockchain,
+    D: bdk::database::BatchDatabase,
 {
-    use crate::MagicalRequest::*;
+    use crate::BDKRequest::*;
 
     let destroy_at_end = if let Destructor { .. } = req {
         true
@@ -451,12 +449,12 @@ pub mod android {
     }
 
     #[no_mangle]
-    pub unsafe extern "C" fn Java_org_magicalbitcoin_wallet_Lib_call(
+    pub unsafe extern "C" fn Java_org_bitcoindevkit_library_Lib_call(
         env: JNIEnv,
         _: JClass,
         incoming_string: JString,
     ) -> jstring {
-        use crate::MagicalRequest::*;
+        use crate::BDKRequest::*;
 
         android_logger::init_once(
             android_logger::Config::default().with_min_level(log::Level::Debug),
@@ -484,7 +482,7 @@ pub mod android {
             }
         };
 
-        let deser = match serde_json::from_str::<MagicalRequest>(incoming_str) {
+        let deser = match serde_json::from_str::<BDKRequest>(incoming_str) {
             Ok(req) => req,
             Err(e) => {
                 return JNIError {

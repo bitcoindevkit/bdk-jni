@@ -1,4 +1,4 @@
-# magical-bitcoin-wallet-jni
+# bdk-jni
 
 Make sure that you have an Android NDK installed (preferibly the latest one), and that you have an `NDK_HOME` env variable set before you start building the library. Usually, if installed through the `sdkmanager`,
 your `NDK_HOME` will look more or less like this: `/home/user/Android/Sdk/ndk/<version>/`.
@@ -32,4 +32,4 @@ CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="aarch64-linux-android21-clang" CC="aa
 
 Make sure that the compiler from the NDK is in your PATH
 
-If the library is built in debug mode, there should already be a symlink from ./target/debug/<target>/libmagical\_bitcoin\_wallet\_jni.so to the `jniLibs` directory, otherwise manually copy the shared object.
+If the library is built in debug mode, there should already be a symlink from ./target/debug/<target>/libbdk\_jni.so to the `jniLibs` directory, otherwise manually copy the shared object.

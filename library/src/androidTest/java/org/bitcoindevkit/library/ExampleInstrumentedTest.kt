@@ -1,4 +1,4 @@
-package org.magicalbitcoin.library
+package org.bitcoindevkit.library
 
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -9,10 +9,10 @@ import org.junit.runner.RunWith
 
 import org.junit.Assert.*
 import org.junit.Before
-import org.magicalbitcoin.wallet.Lib
-import org.magicalbitcoin.wallet.Types.Network
-import org.magicalbitcoin.wallet.Types.WalletConstructor
-import org.magicalbitcoin.wallet.Types.WalletPtr
+import org.bitcoindevkit.library.Lib
+import org.bitcoindevkit.library.Types.Network
+import org.bitcoindevkit.library.Types.WalletConstructor
+import org.bitcoindevkit.library.Types.WalletPtr
 
 /**
  * Instrumented test, which will execute on an Android device.
@@ -24,7 +24,7 @@ class ExampleInstrumentedTest {
 
     companion object {
         init {
-            System.loadLibrary("magical_bitcoin_wallet_jni")
+            System.loadLibrary("bdk_jni")
         }
     }
 
@@ -34,7 +34,7 @@ class ExampleInstrumentedTest {
     fun useAppContext() {
         // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("org.magicalbitcoin.library.test", appContext.packageName)
+        assertEquals("org.bitcoindevkit.library.test", appContext.packageName)
     }
 
     @Before
