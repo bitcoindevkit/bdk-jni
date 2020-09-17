@@ -1,6 +1,7 @@
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
+apply plugin: 'maven-publish'
 
 android {
     compileSdkVersion 29
@@ -31,9 +32,33 @@ task buildRust(type: Exec) {
 }
 
 afterEvaluate {
-  android.libraryVariants.all { variant ->
-    variant.javaCompileProvider.get().dependsOn(buildRust)
-  }
+    android.libraryVariants.all { variant ->
+        variant.javaCompileProvider.get().dependsOn(buildRust)
+    }
+
+    publishing {
+        publications {
+            // Creates a Maven publication called "release".
+            release(MavenPublication) {
+                // Applies the component for the release build variant.
+                from components.release
+
+                // You can then customize attributes of the publication as shown below.
+                groupId = 'org.bitcoindevkit.library'
+                artifactId = 'bdk-jni'
+                version = '0.1.0-beta.1'
+            }
+            // Creates a Maven publication called “debug”.
+            debug(MavenPublication) {
+                // Applies the component for the debug build variant.
+                from components.debug
+
+                groupId = 'org.bitcoindevkit.library'
+                artifactId = 'bdk-jni-debug'
+                version = '0.1.0-beta.1'
+            }
+        }
+    }
 }
 
 dependencies {
