@@ -29,7 +29,8 @@ data class TxOut(
 
 data class UTXO(
     var outpoint: String,
-    var txout: TxOut
+    var txout: TxOut,
+    var is_internal: Boolean
 )
 
 // FIXME: all Longs should be unsigned
@@ -39,6 +40,7 @@ data class TransactionDetails(
     val timestamp: Long,
     val received: Long,
     val sent: Long,
+    val fees: Long,
     val height: Long? // FIXME: should be UInt
 )
 

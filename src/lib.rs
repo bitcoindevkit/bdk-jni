@@ -19,8 +19,8 @@ use bdk::electrum_client;
 use bdk::sled;
 use bdk::Wallet;
 
-use bdk::blockchain::ElectrumBlockchain;
-use bdk::types::{ScriptType, TransactionDetails};
+use bdk::blockchain::{noop_progress, ElectrumBlockchain};
+use bdk::{FeeRate, ScriptType, TransactionDetails, TxBuilder};
 
 use electrum_client::Client;
 
@@ -67,7 +67,6 @@ enum BDKRequest {
         wallet: IntermediatePtr,
 
         max_address: Option<u32>,
-        batch_query_size: Option<usize>,
     },
     ListUnspent {
         wallet: IntermediatePtr,
@@ -115,8 +114,8 @@ enum BDKRequest {
 }
 
 #[derive(Debug)]
-enum MagicalError {
-    WalletError(bdk::error::Error),
+enum BDKJNIError {
+    WalletError(bdk::Error),
     ElectrumClientError(bdk::electrum_client::Error),
     Serialization(serde_json::error::Error),
 
@@ -127,18 +126,18 @@ enum MagicalError {
     Parsing(String),
 }
 
-impl From<bdk::error::Error> for MagicalError {
-    fn from(other: bdk::error::Error) -> Self {
+impl From<bdk::Error> for BDKJNIError {
+    fn from(other: bdk::Error) -> Self {
         match other {
-            bdk::error::Error::Electrum(e) => MagicalError::ElectrumClientError(e),
-            e => MagicalError::WalletError(e),
+            bdk::Error::Electrum(e) => BDKJNIError::ElectrumClientError(e),
+            e => BDKJNIError::WalletError(e),
         }
     }
 }
 
-impl From<bdk::electrum_client::Error> for MagicalError {
+impl From<bdk::electrum_client::Error> for BDKJNIError {
     fn from(other: bdk::electrum_client::Error) -> Self {
-        MagicalError::ElectrumClientError(other)
+        BDKJNIError::ElectrumClientError(other)
     }
 }
 
@@ -198,7 +197,7 @@ struct IntermediatePtr {
     id: [u8; 8],
 }
 
-fn do_constructor_call(req: BDKRequest) -> Result<serde_json::Value, MagicalError> {
+fn do_constructor_call(req: BDKRequest) -> Result<serde_json::Value, BDKJNIError> {
     use crate::BDKRequest::*;
 
     if let Constructor {
@@ -212,10 +211,10 @@ fn do_constructor_call(req: BDKRequest) -> Result<serde_json::Value, MagicalErro
     } = req
     {
         let database =
-            sled::open(path.clone()).map_err(|e| MagicalError::CantOpenDb(e, path.clone()))?;
+            sled::open(path.clone()).map_err(|e| BDKJNIError::CantOpenDb(e, path.clone()))?;
         let tree = database
             .open_tree(name.clone())
-            .map_err(|e| MagicalError::CantOpenTree(e, name.clone()))?;
+            .map_err(|e| BDKJNIError::CantOpenTree(e, name.clone()))?;
 
         debug!(
             "Database at {} name {} opened successfully",
@@ -233,9 +232,9 @@ fn do_constructor_call(req: BDKRequest) -> Result<serde_json::Value, MagicalErro
         )?
         .into();
 
-        serde_json::to_value(&ptr).map_err(MagicalError::Serialization)
+        serde_json::to_value(&ptr).map_err(BDKJNIError::Serialization)
     } else {
-        Err(MagicalError::Unsupported(
+        Err(BDKJNIError::Unsupported(
             "Called `do_constructor_call` with a non-Constructor request".to_string(),
         ))
     }
@@ -244,9 +243,9 @@ fn do_constructor_call(req: BDKRequest) -> Result<serde_json::Value, MagicalErro
 fn do_wallet_call<S, D>(
     wallet: Box<Wallet<S, D>>,
     req: BDKRequest,
-) -> Result<serde_json::Value, MagicalError>
+) -> Result<serde_json::Value, BDKJNIError>
 where
-    S: bdk::blockchain::OnlineBlockchain,
+    S: bdk::blockchain::Blockchain,
     D: bdk::database::BatchDatabase,
 {
     use crate::BDKRequest::*;
@@ -259,29 +258,27 @@ where
 
     let resp = match req {
         Constructor { .. } => {
-            return Err(MagicalError::Unsupported(
+            return Err(BDKJNIError::Unsupported(
                 "Called `do_wallet_call` with a Constructor request".to_string(),
             ))
         }
         Destructor { .. } => Ok(serde_json::Value::Null),
         GetNewAddress { .. } => {
-            serde_json::to_value(&wallet.get_new_address()?).map_err(MagicalError::Serialization)
+            serde_json::to_value(&wallet.get_new_address()?).map_err(BDKJNIError::Serialization)
         }
-        Sync {
-            max_address,
-            batch_query_size,
-            ..
-        } => serde_json::to_value(&wallet.sync(max_address, batch_query_size)?)
-            .map_err(MagicalError::Serialization),
+        Sync { max_address, .. } => {
+            serde_json::to_value(&wallet.sync(noop_progress(), max_address)?)
+                .map_err(BDKJNIError::Serialization)
+        }
         ListUnspent { .. } => {
-            serde_json::to_value(&wallet.list_unspent()?).map_err(MagicalError::Serialization)
+            serde_json::to_value(&wallet.list_unspent()?).map_err(BDKJNIError::Serialization)
         }
         GetBalance { .. } => {
-            serde_json::to_value(&wallet.get_balance()?).map_err(MagicalError::Serialization)
+            serde_json::to_value(&wallet.get_balance()?).map_err(BDKJNIError::Serialization)
         }
         ListTransactions { include_raw, .. } => {
             serde_json::to_value(&wallet.list_transactions(include_raw.unwrap_or(false))?)
-                .map_err(MagicalError::Serialization)
+                .map_err(BDKJNIError::Serialization)
         }
         CreateTx {
             fee_rate,
@@ -298,6 +295,22 @@ where
                 psbt: String,
             }
 
+            let addressees = addressees
+                .into_iter()
+                .map(|pair| -> Result<_, Box<dyn std::error::Error>> {
+                    let (a, v) = pair.into();
+                    Ok((Address::from_str(&a)?.script_pubkey(), v.parse()?))
+                })
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|e| BDKJNIError::Parsing(format!("{:?}", e)))?;
+
+            let mut builder =
+                TxBuilder::with_recipients(addressees).fee_rate(FeeRate::from_sat_per_vb(fee_rate));
+
+            if send_all == Some(true) {
+                builder = builder.send_all();
+            }
+
             let utxos: Option<Vec<OutPoint>> = utxos
                 .map(|u| {
                     u.into_iter()
@@ -305,7 +318,7 @@ where
                         .collect::<Result<Vec<_>, _>>()
                 })
                 .transpose()
-                .map_err(|e| MagicalError::Parsing(format!("{:?}", e)))?;
+                .map_err(|e| BDKJNIError::Parsing(format!("{:?}", e)))?;
             let unspendable: Option<Vec<OutPoint>> = unspendable
                 .map(|u| {
                     u.into_iter()
@@ -313,32 +326,25 @@ where
                         .collect::<Result<Vec<_>, _>>()
                 })
                 .transpose()
-                .map_err(|e| MagicalError::Parsing(format!("{:?}", e)))?;
+                .map_err(|e| BDKJNIError::Parsing(format!("{:?}", e)))?;
 
-            let addressees = addressees
-                .into_iter()
-                .map(|pair| -> Result<_, Box<dyn std::error::Error>> {
-                    let (a, v) = pair.into();
-                    Ok((Address::from_str(&a)?, v.parse()?))
-                })
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(|e| MagicalError::Parsing(format!("{:?}", e)))?;
-            let send_all = send_all.unwrap_or(false);
-            let fee_perkb = fee_rate * 1e-5;
+            if let Some(utxos) = utxos {
+                builder = builder.utxos(utxos);
+            }
+            if let Some(unspendable) = unspendable {
+                builder = builder.unspendable(unspendable);
+            }
 
-            let (psbt, details) = wallet.create_tx(
-                addressees,
-                send_all,
-                fee_perkb,
-                policy.clone(),
-                utxos,
-                unspendable,
-            )?;
+            if let Some(policy_path) = policy {
+                builder = builder.policy_path(policy_path);
+            }
+
+            let (psbt, details) = wallet.create_tx(builder)?;
             serde_json::to_value(&CreateTxResponse {
                 details,
                 psbt: base64::encode(&serialize(&psbt)),
             })
-            .map_err(MagicalError::Serialization)
+            .map_err(BDKJNIError::Serialization)
         }
         Sign {
             psbt,
@@ -352,8 +358,8 @@ where
             }
 
             let psbt =
-                base64::decode(&psbt).map_err(|e| MagicalError::Parsing(format!("{:?}", e)))?;
-            let psbt = deserialize(&psbt).map_err(|e| MagicalError::Parsing(format!("{:?}", e)))?;
+                base64::decode(&psbt).map_err(|e| BDKJNIError::Parsing(format!("{:?}", e)))?;
+            let psbt = deserialize(&psbt).map_err(|e| BDKJNIError::Parsing(format!("{:?}", e)))?;
 
             let (psbt, finalized) = wallet.sign(psbt, assume_height)?;
 
@@ -361,23 +367,23 @@ where
                 psbt: base64::encode(&serialize(&psbt)),
                 finalized,
             })
-            .map_err(MagicalError::Serialization)
+            .map_err(BDKJNIError::Serialization)
         }
         ExtractPsbt { psbt, .. } => {
             let psbt =
-                base64::decode(&psbt).map_err(|e| MagicalError::Parsing(format!("{:?}", e)))?;
+                base64::decode(&psbt).map_err(|e| BDKJNIError::Parsing(format!("{:?}", e)))?;
             let psbt: PartiallySignedTransaction =
-                deserialize(&psbt).map_err(|e| MagicalError::Parsing(format!("{:?}", e)))?;
+                deserialize(&psbt).map_err(|e| BDKJNIError::Parsing(format!("{:?}", e)))?;
 
             Ok(json!({
                 "transaction": serialize(&psbt.extract_tx()).to_hex(),
             }))
         }
         Broadcast { raw_tx, .. } => {
-            let raw_tx: Vec<u8> = FromHex::from_hex(&raw_tx)
-                .map_err(|e| MagicalError::Parsing(format!("{:?}", e)))?;
+            let raw_tx: Vec<u8> =
+                FromHex::from_hex(&raw_tx).map_err(|e| BDKJNIError::Parsing(format!("{:?}", e)))?;
             let raw_tx: Transaction =
-                deserialize(&raw_tx).map_err(|e| MagicalError::Parsing(format!("{:?}", e)))?;
+                deserialize(&raw_tx).map_err(|e| BDKJNIError::Parsing(format!("{:?}", e)))?;
 
             let txid = wallet.broadcast(raw_tx)?;
 
@@ -401,7 +407,7 @@ where
                 .map(|d| d.to_string());
 
             serde_json::to_value(&PublicDescriptorsResponse { external, internal })
-                .map_err(MagicalError::Serialization)
+                .map_err(BDKJNIError::Serialization)
         }
     };
 
@@ -511,7 +517,7 @@ pub mod android {
                 {
                     do_wallet_call(w.move_out(), deser)
                 } else {
-                    Err(MagicalError::Unsupported(
+                    Err(BDKJNIError::Unsupported(
                         "Invalid wallet pointer".to_string(),
                     ))
                 }
