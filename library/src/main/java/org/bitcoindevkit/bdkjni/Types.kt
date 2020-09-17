@@ -1,4 +1,4 @@
-package org.bitcoindevkit.library.Types
+package org.bitcoindevkit.bdkjni.Types
 
 import android.os.Parcelable
 import com.fasterxml.jackson.databind.JsonNode

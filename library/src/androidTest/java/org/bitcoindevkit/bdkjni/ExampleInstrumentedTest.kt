@@ -1,4 +1,4 @@
-package org.bitcoindevkit.library
+package org.bitcoindevkit.bdkjni
 
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -9,10 +9,10 @@ import org.junit.runner.RunWith
 
 import org.junit.Assert.*
 import org.junit.Before
-import org.bitcoindevkit.library.Lib
-import org.bitcoindevkit.library.Types.Network
-import org.bitcoindevkit.library.Types.WalletConstructor
-import org.bitcoindevkit.library.Types.WalletPtr
+
+import org.bitcoindevkit.bdkjni.Types.Network
+import org.bitcoindevkit.bdkjni.Types.WalletConstructor
+import org.bitcoindevkit.bdkjni.Types.WalletPtr
 
 /**
  * Instrumented test, which will execute on an Android device.
@@ -34,7 +34,7 @@ class ExampleInstrumentedTest {
     fun useAppContext() {
         // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("org.bitcoindevkit.library.test", appContext.packageName)
+        assertEquals("org.bitcoindevkit.bdkjni.test", appContext.packageName)
     }
 
     @Before
@@ -71,7 +71,7 @@ class ExampleInstrumentedTest {
     }
 
     @After
-    fun desctructor() {
+    fun destructor() {
         Lib().destructor(wallet)
     }
 }

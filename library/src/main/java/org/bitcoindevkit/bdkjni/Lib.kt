@@ -1,6 +1,6 @@
-package org.bitcoindevkit.library
+package org.bitcoindevkit.bdkjni
 
-import org.bitcoindevkit.library.Types.*
+import org.bitcoindevkit.bdkjni.Types.*
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.JsonNodeFactory

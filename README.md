@@ -52,8 +52,8 @@ repository (~/.r2/repository):
 Once published you will see two new artifacts in your local maven repository:
 
    ```
-   ~/.m2/repository/org/bitcoindevkit/library/bdk-jni-debug/<version>/bdk-jni-debug-<version>.aar
-   ~/.m2/repository/org/bitcoindevkit/library/bdk-jni/<version>/bdk-jni-<version>.aar
+   ~/.m2/repository/org/bitcoindevkit/bdkjni/bdk-jni-debug/<version>/bdk-jni-debug-<version>.aar
+   ~/.m2/repository/org/bitcoindevkit/bdkjni/bdk-jni/<version>/bdk-jni-<version>.aar
    ```
 
 You can then include the bdk.aar or bdk-debug.aar library in a local Android project by first
@@ -72,8 +72,7 @@ And then adding `bdk-jni` or `bdk-jni-debug` to your `app/build.gradle` dependen
 
     ```
     dependencies {
-
-       implementation 'org.bitcoindevkit.library:bdk-jni:0.1.0-beta.1'
+       implementation 'org.bitcoindevkit.bdkjni:bdk-jni:0.1.0-beta.1'
        ...
     }
     ```

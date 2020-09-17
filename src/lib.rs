@@ -455,7 +455,7 @@ pub mod android {
     }
 
     #[no_mangle]
-    pub unsafe extern "C" fn Java_org_bitcoindevkit_library_Lib_call(
+    pub unsafe extern "C" fn Java_org_bitcoindevkit_bdkjni_Lib_call(
         env: JNIEnv,
         _: JClass,
         incoming_string: JString,
