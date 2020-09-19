@@ -30,7 +30,7 @@ data class TxOut(
 data class UTXO(
     var outpoint: String,
     var txout: TxOut,
-    var is_internal: Boolean
+    var keychain: String,
 )
 
 // FIXME: all Longs should be unsigned
@@ -65,6 +65,12 @@ data class Txid(
 data class PublicDescriptorsResponse(
     val external: String,
     val internal: String?
+)
+
+data class ExtendedKey(
+    val mnemonic: String,
+    val xprv: String,
+    val fingerprint: String,
 )
 
 // FIXME: Those should be decleared as UBytes, but jackson doesn't know how to parse them. so we use Ints that are larger and won't overflow to negative

@@ -11,20 +11,13 @@ android_logger = "0.8"
 [lib]
 crate-type = ["dylib"]
 
-# TODO use specific bdk, bitcoin, miniscript versions instead of branch or commit rev
 [dependencies]
-bdk = { git = "https://github.com/bitcoindevkit/bdk.git", rev = "36c5a4dc" }
+bdk = { version = "^0.4", features = ["all-keys"] }
 log = "0.4.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 base64 = "^0.11"
-
-# pin ring version to 0.16.15 because 0.16.16 breaks arm build
-ring = { version = "=0.16.15" }
-
-[patch.crates-io]
-bitcoin = { git = "https://github.com/rust-bitcoin/rust-bitcoin/", rev = "478e091" }
-miniscript = { git = "https://github.com/MagicalBitcoin/rust-miniscript", branch = "descriptor-public-key" }
+rand = "^0.7"
 
 [profile.release]
 opt-level = 'z'  # Optimize for size, faster load time

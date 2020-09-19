@@ -114,6 +114,32 @@ class ExampleInstrumentedTest {
         assertFalse(transactions.isEmpty())
     }
 
+    @Test
+    fun generate_key() {
+        val keys =  Lib().generate_extended_key(Network.testnet, 24, "test123")
+        assertNotNull(keys)
+        assertEquals(24, keys.mnemonic.split(' ').size)
+        assertEquals("tprv", keys.xprv.substring(0,4))
+    }
+
+    @Test
+    fun restore_key() {
+        val mnemonic = "shell bid diary primary focus average truly secret lonely circle radar fall tank action place body wedding sponsor embody glue swing gauge shop penalty"
+        val keys =  Lib().restore_extended_key(Network.testnet, mnemonic, null)
+        assertNotNull(keys)
+        assertEquals(mnemonic, keys.mnemonic)
+        assertEquals("tprv8ZgxMBicQKsPeh5nd4nCDLGh9dLfhqGfUoiQsbThkttjX9oroRY2j5vpEGwkiKiKtzdU7u4eqH2yFicGvz19rMVVXfY8XB9fdoeXWJ7SgVE", keys.xprv)
+    }
+
+    @Test
+    fun restore_key_password() {
+        val mnemonic = "shell bid diary primary focus average truly secret lonely circle radar fall tank action place body wedding sponsor embody glue swing gauge shop penalty"
+        val keys =  Lib().restore_extended_key(Network.testnet, mnemonic, "test123")
+        assertNotNull(keys)
+        assertEquals(mnemonic, keys.mnemonic)
+        assertEquals("tprv8ZgxMBicQKsPebcVXyErMuuv2rgE34m2SLMBhy4hURbSEAWQ1VsWVVmMnD7FKiAuRrxzAETFnUaSvFNQ5SAS5tYEwsM1KHDpUhLLQgd6yG1", keys.xprv)
+    }
+
     @After
     fun destructor() {
         Lib().destructor(wallet)

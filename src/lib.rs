@@ -1,5 +1,6 @@
 #[macro_use]
 extern crate serde_json;
+extern crate rand;
 
 use std::any::TypeId;
 use std::collections::hash_map::DefaultHasher;
@@ -14,16 +15,20 @@ use serde::{Deserialize, Serialize};
 #[allow(unused_imports)]
 use log::{debug, error, info, trace};
 
-use bdk::bitcoin;
 use bdk::electrum_client;
 use bdk::sled;
 use bdk::Wallet;
+use bdk::{bitcoin, KeychainKind};
 
+use bdk::bitcoin::secp256k1::Secp256k1;
 use bdk::blockchain::{noop_progress, ElectrumBlockchain};
-use bdk::{FeeRate, ScriptType, TransactionDetails, TxBuilder};
+use bdk::{FeeRate, TransactionDetails};
 
 use electrum_client::Client;
 
+use bdk::keys::bip39::{Language, Mnemonic, MnemonicType};
+use bdk::keys::{DerivableKey, ExtendedKey, GeneratableKey, GeneratedKey};
+use bdk::miniscript::miniscript;
 use bitcoin::consensus::encode::{deserialize, serialize};
 use bitcoin::hashes::hex::{FromHex, ToHex};
 use bitcoin::util::psbt::PartiallySignedTransaction;
@@ -111,6 +116,18 @@ enum BDKRequest {
     PublicDescriptors {
         wallet: IntermediatePtr,
     },
+    /// Generate new random seed mnemonic phrase and corresponding master extended key
+    GenerateExtendedKey {
+        network: Network,
+        word_count: usize,
+        password: Option<String>,
+    },
+    /// Restore a master extended key from seed backup mnemonic words
+    RestoreExtendedKey {
+        network: Network,
+        mnemonic: String,
+        password: Option<String>,
+    },
 }
 
 #[derive(Debug)]
@@ -124,6 +141,8 @@ enum BDKJNIError {
     CantOpenTree(sled::Error, String),
 
     Parsing(String),
+
+    ExtKeyError(bdk::keys::KeyError),
 }
 
 impl From<bdk::Error> for BDKJNIError {
@@ -141,6 +160,12 @@ impl From<bdk::electrum_client::Error> for BDKJNIError {
     }
 }
 
+impl From<bdk::keys::KeyError> for BDKJNIError {
+    fn from(other: bdk::keys::KeyError) -> Self {
+        BDKJNIError::ExtKeyError(other)
+    }
+}
+
 #[derive(Debug, Clone)]
 struct OpaquePtr<T> {
     raw: *const T,
@@ -148,6 +173,7 @@ struct OpaquePtr<T> {
 }
 
 impl<T: 'static> OpaquePtr<T> {
+    #[allow(dead_code)]
     fn convert_from(value: &IntermediatePtr) -> Result<OpaquePtr<T>, ()> {
         let mut hasher = DefaultHasher::new();
         TypeId::of::<T>().hash(&mut hasher);
@@ -162,6 +188,7 @@ impl<T: 'static> OpaquePtr<T> {
         }
     }
 
+    #[allow(dead_code)]
     fn move_out(self) -> Box<T> {
         unsafe { Box::from_raw(self.raw as *mut T) }
     }
@@ -197,6 +224,7 @@ struct IntermediatePtr {
     id: [u8; 8],
 }
 
+#[allow(dead_code)]
 fn do_constructor_call(req: BDKRequest) -> Result<serde_json::Value, BDKJNIError> {
     use crate::BDKRequest::*;
 
@@ -207,7 +235,7 @@ fn do_constructor_call(req: BDKRequest) -> Result<serde_json::Value, BDKJNIError
         descriptor,
         change_descriptor,
         electrum_url,
-        electrum_proxy,
+        electrum_proxy: _electrum_proxy, // TODO enable use of proxy
     } = req
     {
         let database =
@@ -225,7 +253,7 @@ fn do_constructor_call(req: BDKRequest) -> Result<serde_json::Value, BDKJNIError
         let descriptor: &str = descriptor.as_str();
         let change_descriptor: Option<&str> = change_descriptor.as_deref();
 
-        let client = Client::new(&electrum_url, electrum_proxy.as_deref())?;
+        let client = Client::new(&electrum_url)?;
         let ptr: OpaquePtr<_> = Wallet::new(
             descriptor,
             change_descriptor,
@@ -243,6 +271,7 @@ fn do_constructor_call(req: BDKRequest) -> Result<serde_json::Value, BDKJNIError
     }
 }
 
+#[allow(dead_code)]
 fn do_wallet_call<S, D>(
     wallet: Box<Wallet<S, D>>,
     req: BDKRequest,
@@ -253,11 +282,7 @@ where
 {
     use crate::BDKRequest::*;
 
-    let destroy_at_end = if let Destructor { .. } = req {
-        true
-    } else {
-        false
-    };
+    let destroy_at_end = matches!(req, Destructor { .. });
 
     let resp = match req {
         Constructor { .. } => {
@@ -307,15 +332,15 @@ where
                 .collect::<Result<Vec<_>, _>>()
                 .map_err(|e| BDKJNIError::Parsing(format!("{:?}", e)))?;
 
-            let mut builder = TxBuilder::new();
-            builder = builder.fee_rate(FeeRate::from_sat_per_vb(fee_rate));
+            let mut builder = wallet.build_tx();
+            builder.fee_rate(FeeRate::from_sat_per_vb(fee_rate));
 
             if send_all == Some(true) {
-                builder = builder
+                builder
                     .drain_wallet()
                     .set_single_recipient(addressees[0].0.clone());
             } else {
-                builder = builder.set_recipients(addressees);
+                builder.set_recipients(addressees);
             }
 
             let utxos: Option<Vec<OutPoint>> = utxos
@@ -336,17 +361,17 @@ where
                 .map_err(|e| BDKJNIError::Parsing(format!("{:?}", e)))?;
 
             if let Some(utxos) = utxos {
-                builder = builder.utxos(utxos);
+                builder.add_utxos(utxos.as_slice())?;
             }
             if let Some(unspendable) = unspendable {
-                builder = builder.unspendable(unspendable);
+                builder.unspendable(unspendable);
             }
 
             if let Some(policy_path) = policy {
-                builder = builder.policy_path(policy_path);
+                builder.policy_path(policy_path, KeychainKind::External);
             }
 
-            let (psbt, details) = wallet.create_tx(builder)?;
+            let (psbt, details) = builder.finish()?;
             serde_json::to_value(&CreateTxResponse {
                 details,
                 psbt: base64::encode(&serialize(&psbt)),
@@ -406,16 +431,22 @@ where
             }
 
             let external = wallet
-                .public_descriptor(ScriptType::External)?
+                .public_descriptor(KeychainKind::External)?
                 .unwrap()
                 .to_string();
             let internal = wallet
-                .public_descriptor(ScriptType::Internal)?
+                .public_descriptor(KeychainKind::Internal)?
                 .map(|d| d.to_string());
 
             serde_json::to_value(&PublicDescriptorsResponse { external, internal })
                 .map_err(BDKJNIError::Serialization)
         }
+        GenerateExtendedKey { .. } => Err(BDKJNIError::Unsupported(
+            "Called `do_wallet_call` with a GenerateExtendedKey request".to_string(),
+        )),
+        RestoreExtendedKey { .. } => Err(BDKJNIError::Unsupported(
+            "Called `do_wallet_call` with a RestoreExtendedKey request".to_string(),
+        )),
     };
 
     if destroy_at_end {
@@ -425,6 +456,72 @@ where
     }
 
     resp
+}
+
+#[allow(dead_code)]
+fn do_key_call(req: BDKRequest) -> Result<serde_json::Value, BDKJNIError> {
+    use crate::BDKRequest::*;
+
+    let secp = Secp256k1::new();
+
+    match req {
+        GenerateExtendedKey {
+            network,
+            word_count,
+            password,
+        } => {
+            #[derive(Serialize)]
+            struct GenerateExtendedKeyResponse {
+                mnemonic: String,
+                xprv: String,
+                fingerprint: String,
+            }
+            let mnemonic_type = match word_count {
+                12 => MnemonicType::Words12,
+                _ => MnemonicType::Words24,
+            };
+            let mnemonic: GeneratedKey<_, miniscript::BareCtx> =
+                Mnemonic::generate((mnemonic_type, Language::English)).unwrap();
+            let mnemonic = mnemonic.into_key();
+            let xkey: ExtendedKey = (mnemonic.clone(), password).into_extended_key()?;
+            let xprv = xkey.into_xprv(network).unwrap();
+            let fingerprint = xprv.fingerprint(&secp);
+
+            let resp = &GenerateExtendedKeyResponse {
+                mnemonic: mnemonic.to_string(),
+                xprv: xprv.to_string(),
+                fingerprint: fingerprint.to_string(),
+            };
+
+            serde_json::to_value(resp).map_err(BDKJNIError::Serialization)
+        }
+        RestoreExtendedKey {
+            network,
+            mnemonic,
+            password,
+        } => {
+            #[derive(Serialize)]
+            struct RestoreExtendedKeyResponse {
+                mnemonic: String,
+                xprv: String,
+                fingerprint: String,
+            }
+            let mnemonic = Mnemonic::from_phrase(mnemonic.as_ref(), Language::English).unwrap();
+            let xkey: ExtendedKey = (mnemonic.clone(), password).into_extended_key()?;
+            let xprv = xkey.into_xprv(network).unwrap();
+            let fingerprint = xprv.fingerprint(&secp);
+            let resp = RestoreExtendedKeyResponse {
+                mnemonic: mnemonic.to_string(),
+                xprv: xprv.to_string(),
+                fingerprint: fingerprint.to_string(),
+            };
+
+            serde_json::to_value(resp).map_err(BDKJNIError::Serialization)
+        }
+        _ => Err(BDKJNIError::Unsupported(
+            "Called `do_key_call` with a non-keys request".to_string(),
+        )),
+    }
 }
 
 /// Expose the JNI interface below
@@ -525,6 +622,7 @@ pub mod android {
                     ))
                 }
             }
+            GenerateExtendedKey { .. } | RestoreExtendedKey { .. } => do_key_call(deser),
         };
 
         let final_string = match response_result {

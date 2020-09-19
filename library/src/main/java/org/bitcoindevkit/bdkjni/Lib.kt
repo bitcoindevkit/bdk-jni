@@ -37,7 +37,7 @@ class Lib {
 
     fun destructor(wallet: WalletPtr) {
         val node = JsonNodeFactory.instance.objectNode()
-        node.put("wallet", mapper.valueToTree<JsonNode>(wallet))
+        node.set("wallet", mapper.valueToTree<JsonNode>(wallet))
         val req = JsonRpc("destructor", node)
         val reqString = mapper.writeValueAsString(req)
         val resString = call(reqString)
@@ -49,7 +49,7 @@ class Lib {
 
     fun get_new_address(wallet: WalletPtr): String {
         val node = JsonNodeFactory.instance.objectNode()
-        node.put("wallet", mapper.valueToTree<JsonNode>(wallet))
+        node.set("wallet", mapper.valueToTree<JsonNode>(wallet))
         val req = JsonRpc("get_new_address", node)
         val reqString = mapper.writeValueAsString(req)
         val resString = call(reqString)
@@ -62,7 +62,7 @@ class Lib {
 
     fun sync(wallet: WalletPtr, max_address: Int?=null) {
         val node = JsonNodeFactory.instance.objectNode()
-        node.put("wallet", mapper.valueToTree<JsonNode>(wallet))
+        node.set("wallet", mapper.valueToTree<JsonNode>(wallet))
         node.put("max_address", max_address)
         val req = JsonRpc("sync", node)
         val reqString = mapper.writeValueAsString(req)
@@ -75,7 +75,7 @@ class Lib {
 
     fun list_unspent(wallet: WalletPtr): List<UTXO> {
         val node = JsonNodeFactory.instance.objectNode()
-        node.put("wallet", mapper.valueToTree<JsonNode>(wallet))
+        node.set("wallet", mapper.valueToTree<JsonNode>(wallet))
         val req = JsonRpc("list_unspent", node)
         val reqString = mapper.writeValueAsString(req)
         val resString = call(reqString)
@@ -90,7 +90,7 @@ class Lib {
     // FIXME: should be ULong
     fun get_balance(wallet: WalletPtr): Long {
         val node = JsonNodeFactory.instance.objectNode()
-        node.put("wallet", mapper.valueToTree<JsonNode>(wallet))
+        node.set("wallet", mapper.valueToTree<JsonNode>(wallet))
         val req = JsonRpc("get_balance", node)
         val reqString = mapper.writeValueAsString(req)
         val resString = call(reqString)
@@ -103,8 +103,8 @@ class Lib {
 
     fun list_transactions(wallet: WalletPtr, include_raw: Boolean?=false): List<TransactionDetails> {
         val node = JsonNodeFactory.instance.objectNode()
-        node.put("wallet", mapper.valueToTree<JsonNode>(wallet))
-        node.put("include_raw", mapper.valueToTree<JsonNode>(include_raw))
+        node.set("wallet", mapper.valueToTree<JsonNode>(wallet))
+        node.set("include_raw", mapper.valueToTree<JsonNode>(include_raw))
         val req = JsonRpc("list_transactions", node)
         val reqString = mapper.writeValueAsString(req)
         val resString = call(reqString)
@@ -118,13 +118,13 @@ class Lib {
 
     fun create_tx(wallet: WalletPtr, fee_rate: Float, addressees: List<Pair<String, String>>, send_all: Boolean?=false, utxos: List<String>?=null, unspendable: List<String>?=null, policy: Map<String, List<String>>?=null): CreateTxResponse {
         val node = JsonNodeFactory.instance.objectNode()
-        node.put("wallet", mapper.valueToTree<JsonNode>(wallet))
-        node.put("fee_rate", mapper.valueToTree<JsonNode>(fee_rate))
-        node.put("addressees", mapper.valueToTree<JsonNode>(addressees))
-        node.put("send_all", mapper.valueToTree<JsonNode>(send_all))
-        node.put("utxos", mapper.valueToTree<JsonNode>(utxos))
-        node.put("unspendable", mapper.valueToTree<JsonNode>(unspendable))
-        node.put("policy", mapper.valueToTree<JsonNode>(policy))
+        node.set("wallet", mapper.valueToTree<JsonNode>(wallet))
+        node.set("fee_rate", mapper.valueToTree<JsonNode>(fee_rate))
+        node.set("addressees", mapper.valueToTree<JsonNode>(addressees))
+        node.set("send_all", mapper.valueToTree<JsonNode>(send_all))
+        node.set("utxos", mapper.valueToTree<JsonNode>(utxos))
+        node.set("unspendable", mapper.valueToTree<JsonNode>(unspendable))
+        node.set("policy", mapper.valueToTree<JsonNode>(policy))
         val req = JsonRpc("create_tx", node)
         val reqString = mapper.writeValueAsString(req)
         val resString = call(reqString)
@@ -138,9 +138,9 @@ class Lib {
 
     fun sign(wallet: WalletPtr, psbt: String, assume_height: Int?=null): SignResponse {
         val node = JsonNodeFactory.instance.objectNode()
-        node.put("wallet", mapper.valueToTree<JsonNode>(wallet))
-        node.put("psbt", mapper.valueToTree<JsonNode>(psbt))
-        node.put("assume_height", mapper.valueToTree<JsonNode>(assume_height))
+        node.set("wallet", mapper.valueToTree<JsonNode>(wallet))
+        node.set("psbt", mapper.valueToTree<JsonNode>(psbt))
+        node.set("assume_height", mapper.valueToTree<JsonNode>(assume_height))
         val req = JsonRpc("sign", node)
         val reqString = mapper.writeValueAsString(req)
         val resString = call(reqString)
@@ -154,8 +154,8 @@ class Lib {
 
     fun extract_psbt(wallet: WalletPtr, psbt: String): RawTransaction {
         val node = JsonNodeFactory.instance.objectNode()
-        node.put("wallet", mapper.valueToTree<JsonNode>(wallet))
-        node.put("psbt", mapper.valueToTree<JsonNode>(psbt))
+        node.set("wallet", mapper.valueToTree<JsonNode>(wallet))
+        node.set("psbt", mapper.valueToTree<JsonNode>(psbt))
         val req = JsonRpc("extract_psbt", node)
         val reqString = mapper.writeValueAsString(req)
         val resString = call(reqString)
@@ -169,8 +169,8 @@ class Lib {
 
     fun broadcast(wallet: WalletPtr, raw_tx: String): Txid {
         val node = JsonNodeFactory.instance.objectNode()
-        node.put("wallet", mapper.valueToTree<JsonNode>(wallet))
-        node.put("raw_tx", mapper.valueToTree<JsonNode>(raw_tx))
+        node.set("wallet", mapper.valueToTree<JsonNode>(wallet))
+        node.set("raw_tx", mapper.valueToTree<JsonNode>(raw_tx))
         val req = JsonRpc("broadcast", node)
         val reqString = mapper.writeValueAsString(req)
         val resString = call(reqString)
@@ -184,7 +184,7 @@ class Lib {
 
     fun public_descriptors(wallet: WalletPtr): PublicDescriptorsResponse {
         val node = JsonNodeFactory.instance.objectNode()
-        node.put("wallet", mapper.valueToTree<JsonNode>(wallet))
+        node.set("wallet", mapper.valueToTree<JsonNode>(wallet))
         val req = JsonRpc("public_descriptors", node)
         val reqString = mapper.writeValueAsString(req)
         val resString = call(reqString)
@@ -194,5 +194,35 @@ class Lib {
         }
         // FIXME: would be better to re-use the jsonnode instead of parsing the string again
         return mapper.treeToValue(json, PublicDescriptorsResponse::class.java)
+    }
+
+    fun generate_extended_key(network: Network, mnemonicWordCount: Int, password: String?): ExtendedKey {
+        val node = JsonNodeFactory.instance.objectNode()
+        node.set("network", mapper.valueToTree<JsonNode>(network))
+        node.put("word_count", mnemonicWordCount)
+        node.put("password", password)
+        val req = JsonRpc("generate_extended_key", node)
+        val reqString = mapper.writeValueAsString(req)
+        val resString = call(reqString)
+        val json: JsonNode = mapper.readValue(resString)
+        if (json.has("error")) {
+            throw Exception(json.get("error").asText())
+        }
+        return mapper.treeToValue(json, ExtendedKey::class.java)
+    }
+
+    fun restore_extended_key(network: Network, mnemonic: String, password: String?): ExtendedKey {
+        val node = JsonNodeFactory.instance.objectNode()
+        node.set("network", mapper.valueToTree<JsonNode>(network))
+        node.put("mnemonic", mnemonic)
+        node.put("password", password)
+        val req = JsonRpc("restore_extended_key", node)
+        val reqString = mapper.writeValueAsString(req)
+        val resString = call(reqString)
+        val json: JsonNode = mapper.readValue(resString)
+        if (json.has("error")) {
+            throw Exception(json.get("error").asText())
+        }
+        return mapper.treeToValue(json, ExtendedKey::class.java)
     }
 }
