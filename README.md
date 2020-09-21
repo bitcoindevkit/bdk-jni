@@ -1,5 +1,16 @@
 # bdk-jni
 
+Install [Open JDK 15](https://jdk.java.net/15/) if not already installed.
+
+   ```
+   sudo mv openjdk-15_osx-x64_bin.tar.gz /Library/Java/JavaVirtualMachines/
+   cd /Library/Java/JavaVirtualMachines/
+   sudo tar -xzf openjdk-15_osx-x64_bin.tar.gz
+   sudo rm openjdk-15_osx-x64_bin.tar.gz
+   ```
+
+   Use `/usr/libexec/java_home` to set JAVA_HOME and PATH environment variables in `.bash_profile` (or where appropriate).
+
 If you haven't installed rust android targets first add those to your environment using [rustup](https://www.rust-lang.org/learn/get-started)
 
    ```
