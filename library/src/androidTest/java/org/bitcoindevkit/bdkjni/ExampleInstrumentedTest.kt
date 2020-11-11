@@ -1,7 +1,11 @@
 package org.bitcoindevkit.bdkjni
 
+import android.util.Log
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 
 import org.junit.Test
@@ -61,6 +65,43 @@ class ExampleInstrumentedTest {
     fun newAddress() {
         val address =  Lib().get_new_address(wallet)
         assertFalse(address.isEmpty())
+    }
+
+    @Test
+    fun sync() {
+        Lib().sync(wallet, 100)
+        val balance = Lib().get_balance(wallet)
+        assertFalse(balance == 0L)
+    }
+
+    @Test
+    fun multiThreadBalance() {
+        runBlocking {
+            val flow1 = newBalanceFlow(1).flowOn(Dispatchers.IO)
+            val flow2 = newBalanceFlow(2).flowOn(Dispatchers.IO)
+            flow1.flatMapMerge(concurrency = 2) { flow2 }.collect()
+            //flow1.collect()
+        }
+    }
+
+    private fun newBalanceFlow(id: Int): Flow<Pair<Int, Long>> {
+        return (1..10).asFlow()
+            //.onStart { Log.d("BAL_FLOW", "start flow $id") }
+            //.onCompletion { Log.d("BAL_FLOW", "complete flow $id") }
+            //.onEach { Log.d("BAL_FLOW", "flow $id, iteration $it") }
+            .map {
+                val balance = Lib().get_balance(wallet)
+                Pair(it, balance)
+            }
+            .catch { e ->
+                Log.e("BAL_FLOW", "failed flow $id with exception: $e")
+                fail()
+            }
+            .onEach {
+                //Log.d("BAL_FLOW", "verifying flow $id, iteration ${it.first}")
+                assertFalse(it.second == 0L)
+                //Log.d("BAL_FLOW", "finished flow $id iteration ${it.first}")
+            }
     }
 
     @Test

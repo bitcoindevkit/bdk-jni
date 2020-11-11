@@ -431,7 +431,7 @@ where
 #[cfg(target_os = "android")]
 #[allow(non_snake_case)]
 pub mod android {
-    use std::ffi::{CStr, CString};
+    use std::ffi::CString;
 
     use jni::objects::{JClass, JObject, JString};
     use jni::sys::jstring;
@@ -461,11 +461,18 @@ pub mod android {
         }
     }
 
+    impl Into<String> for JNIError {
+        fn into(self) -> String {
+            serde_json::to_string(&self)
+                .unwrap_or("{\"error\": \"Can't serialize error\", \"code\": -1000}".to_string())
+        }
+    }
+
     #[no_mangle]
     pub unsafe extern "C" fn Java_org_bitcoindevkit_bdkjni_Lib_call(
         env: JNIEnv,
         _: JClass,
-        incoming_string: JString,
+        incoming_stringj: JString,
     ) -> jstring {
         use crate::BDKRequest::*;
 
@@ -473,29 +480,17 @@ pub mod android {
             android_logger::Config::default().with_min_level(log::Level::Debug),
         );
 
-        let incoming_cstr = match env.get_string(incoming_string) {
-            Ok(string) => CStr::from_ptr(string.as_ptr()),
+        let incoming_string: String = match env.get_string(incoming_stringj) {
+            Ok(string) => string.into(),
             Err(e) => {
                 return JNIError {
                     error: format!("Invalid input string: {:?}", e),
                     code: -1001,
-                }
-                .into_string(&env)
+                }.into_string(&env)
             }
         };
 
-        let incoming_str = match incoming_cstr.to_str() {
-            Ok(string) => string,
-            Err(e) => {
-                return JNIError {
-                    error: format!("Invalid input string encoding: {:?}", e),
-                    code: -1002,
-                }
-                .into_string(&env)
-            }
-        };
-
-        let deser = match serde_json::from_str::<BDKRequest>(incoming_str) {
+        let deser = match serde_json::from_str::<BDKRequest>(incoming_string.as_str()) {
             Ok(req) => req,
             Err(e) => {
                 return JNIError {
