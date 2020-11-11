@@ -222,10 +222,13 @@ fn do_constructor_call(req: BDKRequest) -> Result<serde_json::Value, BDKJNIError
             name
         );
 
+        let descriptor : &str = descriptor.as_str();
+        let change_descriptor : Option<&str> = change_descriptor.as_deref();
+
         let client = Client::new(&electrum_url, electrum_proxy.as_deref())?;
         let ptr: OpaquePtr<_> = Wallet::new(
-            &descriptor,
-            change_descriptor.as_deref(),
+            descriptor,
+            change_descriptor,
             network,
             tree,
             ElectrumBlockchain::from(client),
@@ -304,11 +307,15 @@ where
                 .collect::<Result<Vec<_>, _>>()
                 .map_err(|e| BDKJNIError::Parsing(format!("{:?}", e)))?;
 
-            let mut builder =
-                TxBuilder::with_recipients(addressees).fee_rate(FeeRate::from_sat_per_vb(fee_rate));
+            let mut builder = TxBuilder::new();
+            builder = builder.fee_rate(FeeRate::from_sat_per_vb(fee_rate));
 
             if send_all == Some(true) {
-                builder = builder.send_all();
+                builder = builder
+                    .drain_wallet()
+                    .set_single_recipient(addressees[0].0.clone());
+            } else {
+                builder = builder.set_recipients(addressees);
             }
 
             let utxos: Option<Vec<OutPoint>> = utxos
