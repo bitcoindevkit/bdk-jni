@@ -1,0 +1,70 @@
+on: [push, pull_request]
+
+name: CI
+
+jobs:
+
+  build-test:
+    name: build test
+    runs-on: macOS-latest
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-linux-android
+            test: true
+            api: 28
+            arch: x86_64
+          - target: i686-linux-android
+            test: true
+            api: 28
+            arch: x86
+          - target: aarch64-linux-android
+          - target: armv7-linux-androideabi
+    env:
+      BUILD_TARGETS: ${{ matrix.target }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+#      - name: Cache
+#        uses: actions/cache@v2
+#        with:
+#          path: |
+#            ~/.cargo/registry
+#            ~/.cargo/git
+#            target
+#          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.toml','**/Cargo.lock') }}
+      - name: Toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          target: ${{ matrix.target }}
+      - name: Build
+        run: ./gradlew build
+      - name: Test
+        if: ${{ matrix.test == true }}
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api }}
+          arch: ${{ matrix.arch }}
+          script: ./gradlew connectedDebugAndroidTest
+
+  rust-fmt:
+    name: Rust fmt
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+      - name: toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: rustfmt
+      - name: Fmt check
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check

@@ -1,5 +1,7 @@
 # bdk-jni
 
+![CI](https://github.com/bitcoindevkit/bdk-jni/workflows/CI/badge.svg)
+
 Install [Open JDK 15](https://jdk.java.net/15/) if not already installed.
 
    ```
