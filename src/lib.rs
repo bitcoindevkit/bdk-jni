@@ -222,8 +222,8 @@ fn do_constructor_call(req: BDKRequest) -> Result<serde_json::Value, BDKJNIError
             name
         );
 
-        let descriptor : &str = descriptor.as_str();
-        let change_descriptor : Option<&str> = change_descriptor.as_deref();
+        let descriptor: &str = descriptor.as_str();
+        let change_descriptor: Option<&str> = change_descriptor.as_deref();
 
         let client = Client::new(&electrum_url, electrum_proxy.as_deref())?;
         let ptr: OpaquePtr<_> = Wallet::new(
@@ -486,7 +486,8 @@ pub mod android {
                 return JNIError {
                     error: format!("Invalid input string: {:?}", e),
                     code: -1001,
-                }.into_string(&env)
+                }
+                .into_string(&env)
             }
         };
 

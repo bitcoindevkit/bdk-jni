@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-set -eo pipefail
+set -eo pipefail -o xtrace
 
-# Update this line accordingly if you are not building *from* x86_64
-export PATH=$PATH:$NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin
+# Update this line accordingly if you are not building *from* darwin-x86_64 or linux-x86_64
+export PATH=$PATH:$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/`uname | tr '[:upper:]' '[:lower:]'`-x86_64/bin
 
 # IMPORTANT: make sure every target is not a substring of a different one. We check for them with grep later on
 BUILD_TARGETS="${BUILD_TARGETS:-aarch64,armv7,x86_64,i686}"
