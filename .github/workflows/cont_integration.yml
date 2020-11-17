@@ -5,7 +5,7 @@ name: CI
 jobs:
 
   build-test:
-    name: build test
+    name: Build and test
     runs-on: macOS-latest
     strategy:
       matrix:
@@ -33,13 +33,12 @@ jobs:
 #            ~/.cargo/git
 #            target
 #          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.toml','**/Cargo.lock') }}
-      - name: Toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-          target: ${{ matrix.target }}
+      - name: Set default toolchain
+        run: rustup default stable
+      - name: Set profile
+        run: rustup set profile minimal
+      - name: Add target
+        run: rustup target add ${{ matrix.target }}
       - name: Build
         run: ./gradlew build
       - name: Test
@@ -50,21 +49,34 @@ jobs:
           arch: ${{ matrix.arch }}
           script: ./gradlew connectedDebugAndroidTest
 
+  build-all:
+    name: Build all targets
+    runs-on: macOS-latest
+    env:
+      BUILD_TARGETS: aarch64,armv7,x86_64,i686
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set default toolchain
+        run: rustup default stable
+      - name: Set profile
+        run: rustup set profile minimal
+      - name: Add targets
+        run: rustup target add x86_64-linux-android i686-linux-android aarch64-linux-android armv7-linux-androideabi
+      - name: Build
+        run: ./gradlew build
+
   rust-fmt:
     name: Rust fmt
     runs-on: ubuntu-latest
     steps:
-      - name: checkout
+      - name: Checkout
         uses: actions/checkout@v2
-      - name: toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-          components: rustfmt
-      - name: Fmt check
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+      - name: Set default toolchain
+        run: rustup default ${{ matrix.rust }}
+      - name: Set profile
+        run: rustup set profile minimal
+      - name: Add rustfmt
+        run: rustup component add rustfmt
+      - name: Check fmt
+        run: cargo fmt --all -- --check
