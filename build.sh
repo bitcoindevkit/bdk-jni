@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -eo pipefail -o xtrace
 
+# If ANDROID_NDK_HOME is not set then set it to github actions default
+[ -z "$ANDROID_NDK_HOME" ] && export ANDROID_NDK_HOME=$ANDROID_HOME/ndk-bundle
+
 # Update this line accordingly if you are not building *from* darwin-x86_64 or linux-x86_64
 export PATH=$PATH:$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/`uname | tr '[:upper:]' '[:lower:]'`-x86_64/bin
 

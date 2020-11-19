@@ -6,7 +6,7 @@ jobs:
 
   build-test:
     name: Build and test
-    runs-on: macOS-latest
+    runs-on: macos-10.15
     strategy:
       matrix:
         include:
@@ -25,14 +25,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-#      - name: Cache
-#        uses: actions/cache@v2
-#        with:
-#          path: |
-#            ~/.cargo/registry
-#            ~/.cargo/git
-#            target
-#          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.toml','**/Cargo.lock') }}
       - name: Set default toolchain
         run: rustup default stable
       - name: Set profile
@@ -51,7 +43,7 @@ jobs:
 
   build-all:
     name: Build all targets
-    runs-on: macOS-latest
+    runs-on: ubuntu-18.04
     env:
       BUILD_TARGETS: aarch64,armv7,x86_64,i686
     steps:
