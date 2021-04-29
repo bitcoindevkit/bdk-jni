@@ -2,16 +2,8 @@
 
 ![CI](https://github.com/bitcoindevkit/bdk-jni/workflows/CI/badge.svg)
 
-Install [Open JDK 15](https://jdk.java.net/15/) if not already installed.
-```sh
-# macOS
-sudo mv openjdk-15_osx-x64_bin.tar.gz /Library/Java/JavaVirtualMachines/
-cd /Library/Java/JavaVirtualMachines/
-sudo tar -xzf openjdk-15_osx-x64_bin.tar.gz
-sudo rm openjdk-15_osx-x64_bin.tar.gz
-```
-
-Use `/usr/libexec/java_home` to set JAVA_HOME and PATH environment variables in `.bash_profile` (or where appropriate).
+Install Open JDK 14 or later if not already installed and make sure your `JAVA_HOME` env variable is
+set and `java --version` is found and displays the the correct version.
 
 If you haven't installed rust android targets first add those to your environment using [rustup](https://www.rust-lang.org/learn/get-started)
 ```sh
@@ -20,6 +12,14 @@ rustup target add x86_64-apple-darwin x86_64-unknown-linux-gnu x86_64-linux-andr
 
 Then make sure that you have an Android NDK installed (preferably the latest one), and that you have an `NDK_HOME` env variable set before you start building the library. Usually, if installed through the `sdkmanager`,
 your `NDK_HOME` will look more or less like this: `/home/user/Android/Sdk/ndk/<version>/`.
+
+Also make sure that you set the `NDK_HOME` env variable and add the prebuild binaries to your 
+`PATH` env variable, for example:  
+
+```
+export NDK_HOME=/home/<user>/Android/Sdk/ndk/22.1.7171670
+export PATH=$PATH:$NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin
+```
 
 Build android library in `.aar` format with:
 ```sh
