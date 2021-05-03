@@ -33,6 +33,7 @@ use bitcoin::consensus::encode::{deserialize, serialize};
 use bitcoin::hashes::hex::{FromHex, ToHex};
 use bitcoin::util::psbt::PartiallySignedTransaction;
 use bitcoin::{Address, Network, OutPoint, Transaction};
+use bdk::wallet::AddressIndex::New;
 
 #[derive(Debug, Deserialize)]
 struct KotlinPair<F: std::fmt::Debug, S: std::fmt::Debug> {
@@ -292,7 +293,7 @@ where
         }
         Destructor { .. } => Ok(serde_json::Value::Null),
         GetNewAddress { .. } => {
-            serde_json::to_value(&wallet.get_new_address()?).map_err(BDKJNIError::Serialization)
+            serde_json::to_value(&wallet.get_address(New)?).map_err(BDKJNIError::Serialization)
         }
         Sync { max_address, .. } => {
             serde_json::to_value(&wallet.sync(noop_progress(), max_address)?)
