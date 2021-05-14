@@ -29,11 +29,11 @@ use electrum_client::Client;
 use bdk::keys::bip39::{Language, Mnemonic, MnemonicType};
 use bdk::keys::{DerivableKey, ExtendedKey, GeneratableKey, GeneratedKey};
 use bdk::miniscript::miniscript;
+use bdk::wallet::AddressIndex::New;
 use bitcoin::consensus::encode::{deserialize, serialize};
 use bitcoin::hashes::hex::{FromHex, ToHex};
 use bitcoin::util::psbt::PartiallySignedTransaction;
 use bitcoin::{Address, Network, OutPoint, Transaction};
-use bdk::wallet::AddressIndex::New;
 
 #[derive(Debug, Deserialize)]
 struct KotlinPair<F: std::fmt::Debug, S: std::fmt::Debug> {
