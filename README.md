@@ -10,15 +10,12 @@ If you haven't installed rust android targets first add those to your environmen
 rustup target add x86_64-apple-darwin x86_64-unknown-linux-gnu x86_64-linux-android aarch64-linux-android armv7-linux-androideabi i686-linux-android
 ```
 
-Then make sure that you have an Android NDK installed (preferably the latest one), and that you have an `NDK_HOME` env variable set before you start building the library. Usually, if installed through the `sdkmanager`,
-your `NDK_HOME` will look more or less like this: `/home/user/Android/Sdk/ndk/<version>/`.
-
-Also make sure that you set the `NDK_HOME` env variable and add the prebuild binaries to your 
-`PATH` env variable, for example:  
+Then make sure that you have an Android NDK installed ([our Github CI is using 21.4.7075529](https://github.com/actions/virtual-environments/blob/main/images/macos/macos-10.15-Readme.md), 
+and that you have an `ANDROID_NDK_HOME` env variable set before you start building the library. Usually, if installed through the `sdkmanager`,
+your `ANDROID_NDK_HOME` will look more or less like this: `/home/<user>/Android/Sdk/ndk/<version>/`.
 
 ```
-export NDK_HOME=/home/<user>/Android/Sdk/ndk/22.1.7171670
-export PATH=$PATH:$NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin
+export ANDROID_NDK_HOME=/home/<user>/Android/Sdk/ndk/<NDK version, ie. 21.4.7075529>
 ```
 
 Build android library in `.aar` format with:
