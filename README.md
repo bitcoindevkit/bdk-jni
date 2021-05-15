@@ -1,6 +1,6 @@
 # bdk-jni
 
-![CI](https://github.com/bitcoindevkit/bdk-jni/workflows/CI/badge.svg)
+<a href="https://github.com/bitcoindevkit/bdk-jni/actions?query=workflow%3ACI"><img alt="CI Status" src="https://github.com/bitcoindevkit/bdk-jni/workflows/CI/badge.svg"></a>
 
 Install Open JDK 14 or later if not already installed and make sure your `JAVA_HOME` env variable is
 set and `java --version` is found and displays the the correct version.
