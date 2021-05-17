@@ -33,7 +33,14 @@ containing one or more of the following items:
 
 The output aar library is available at `./library/build/outputs/aar`.
 
-Then you can run the tests with:
+To run the tests first launch a local android emulator from the Android Studio IDE or via the command line. 
+If starting from the command line you will also need to set the `ANDROID_SDK_ROOT` env variable.
+
+```
+export ANDROID_SDK_ROOT=</home/<user>/Android/Sdk or where ever your Sdk is installed>
+```
+
+Then start the connected unit tests with:
 ```sh
 ./gradlew connectedDebugAndroidTest
 ```
