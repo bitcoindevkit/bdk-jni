@@ -193,6 +193,11 @@ impl<T: 'static> OpaquePtr<T> {
     fn move_out(self) -> Box<T> {
         unsafe { Box::from_raw(self.raw as *mut T) }
     }
+
+    #[allow(dead_code)]
+    fn as_ref(&self) -> &T {
+        unsafe { &*self.raw }
+    }
 }
 
 impl<T> Serialize for OpaquePtr<T> {
@@ -274,7 +279,7 @@ fn do_constructor_call(req: BDKRequest) -> Result<serde_json::Value, BDKJNIError
 
 #[allow(dead_code)]
 fn do_wallet_call<S, D>(
-    wallet: Box<Wallet<S, D>>,
+    wallet: &Wallet<S, D>,
     req: BDKRequest,
 ) -> Result<serde_json::Value, BDKJNIError>
 where
@@ -282,8 +287,6 @@ where
     D: bdk::database::BatchDatabase,
 {
     use crate::BDKRequest::*;
-
-    let destroy_at_end = matches!(req, Destructor { .. });
 
     let resp = match req {
         Constructor { .. } => {
@@ -450,12 +453,6 @@ where
         )),
     };
 
-    if destroy_at_end {
-        std::mem::drop(wallet);
-    } else {
-        std::mem::forget(wallet);
-    }
-
     resp
 }
 
@@ -616,7 +613,14 @@ pub mod android {
                 if let Ok(w) =
                     OpaquePtr::<Wallet<ElectrumBlockchain, sled::Tree>>::convert_from(wallet)
                 {
-                    do_wallet_call(w.move_out(), deser)
+                    let drop_wallet = matches!(deser, Destructor { .. });
+                    let result = do_wallet_call(w.as_ref(), deser);
+
+                    if drop_wallet {
+                        let _ = w.move_out();
+                    }
+
+                    result
                 } else {
                     Err(BDKJNIError::Unsupported(
                         "Invalid wallet pointer".to_string(),
