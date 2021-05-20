@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.2.0]
+
 ### Project
 #### Added
 - Add LICENSE
@@ -36,4 +38,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Fixed
 - Fix crashes on errors
 
-[unreleased]: https://github.com/bitcoindevkit/bdk-jni/compare/d08725cc...HEAD
+[unreleased]: https://github.com/bitcoindevkit/bdk/compare/v0.2.0...HEAD
+[v0.2.0]: https://github.com/bitcoindevkit/bdk-jni/compare/d08725cc...v0.2.0
