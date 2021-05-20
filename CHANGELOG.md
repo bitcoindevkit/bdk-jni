@@ -29,8 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Return Transaction details data list from list_transactions
 - Add android unit tests
 - Add android tests
-- Update `bdk` to rev `0.4`
+- Update `bdk` to rev `0.7`
 - Add multi-thread coroutine test, fix Lib.call() request string handling
 - Add create and restore extended key APIs
+
+#### Fixed
+- Fix crashes on errors
 
 [unreleased]: https://github.com/bitcoindevkit/bdk-jni/compare/d08725cc...HEAD

@@ -15,10 +15,10 @@ use serde::{Deserialize, Serialize};
 #[allow(unused_imports)]
 use log::{debug, error, info, trace};
 
-use bdk::electrum_client;
 use bdk::sled;
 use bdk::Wallet;
 use bdk::{bitcoin, KeychainKind};
+use bdk::{electrum_client, SignOptions};
 
 use bdk::bitcoin::secp256k1::Secp256k1;
 use bdk::blockchain::{noop_progress, ElectrumBlockchain};
@@ -52,7 +52,7 @@ impl<F: std::fmt::Debug, S: std::fmt::Debug> From<KotlinPair<F, S>> for (F, S) {
 #[derive(Debug, Deserialize)]
 #[serde(tag = "method", content = "params")]
 #[serde(rename_all = "snake_case")]
-enum BDKRequest {
+enum BdkRequest {
     Constructor {
         name: String,
         network: Network,
@@ -132,7 +132,7 @@ enum BDKRequest {
 }
 
 #[derive(Debug)]
-enum BDKJNIError {
+enum BdkJniError {
     WalletError(bdk::Error),
     ElectrumClientError(bdk::electrum_client::Error),
     Serialization(serde_json::error::Error),
@@ -146,24 +146,24 @@ enum BDKJNIError {
     ExtKeyError(bdk::keys::KeyError),
 }
 
-impl From<bdk::Error> for BDKJNIError {
+impl From<bdk::Error> for BdkJniError {
     fn from(other: bdk::Error) -> Self {
         match other {
-            bdk::Error::Electrum(e) => BDKJNIError::ElectrumClientError(e),
-            e => BDKJNIError::WalletError(e),
+            bdk::Error::Electrum(e) => BdkJniError::ElectrumClientError(e),
+            e => BdkJniError::WalletError(e),
         }
     }
 }
 
-impl From<bdk::electrum_client::Error> for BDKJNIError {
+impl From<bdk::electrum_client::Error> for BdkJniError {
     fn from(other: bdk::electrum_client::Error) -> Self {
-        BDKJNIError::ElectrumClientError(other)
+        BdkJniError::ElectrumClientError(other)
     }
 }
 
-impl From<bdk::keys::KeyError> for BDKJNIError {
+impl From<bdk::keys::KeyError> for BdkJniError {
     fn from(other: bdk::keys::KeyError) -> Self {
-        BDKJNIError::ExtKeyError(other)
+        BdkJniError::ExtKeyError(other)
     }
 }
 
@@ -231,8 +231,8 @@ struct IntermediatePtr {
 }
 
 #[allow(dead_code)]
-fn do_constructor_call(req: BDKRequest) -> Result<serde_json::Value, BDKJNIError> {
-    use crate::BDKRequest::*;
+fn do_constructor_call(req: BdkRequest) -> Result<serde_json::Value, BdkJniError> {
+    use crate::BdkRequest::*;
 
     if let Constructor {
         name,
@@ -245,10 +245,10 @@ fn do_constructor_call(req: BDKRequest) -> Result<serde_json::Value, BDKJNIError
     } = req
     {
         let database =
-            sled::open(path.clone()).map_err(|e| BDKJNIError::CantOpenDb(e, path.clone()))?;
+            sled::open(path.clone()).map_err(|e| BdkJniError::CantOpenDb(e, path.clone()))?;
         let tree = database
             .open_tree(name.clone())
-            .map_err(|e| BDKJNIError::CantOpenTree(e, name.clone()))?;
+            .map_err(|e| BdkJniError::CantOpenTree(e, name.clone()))?;
 
         debug!(
             "Database at {} name {} opened successfully",
@@ -269,9 +269,9 @@ fn do_constructor_call(req: BDKRequest) -> Result<serde_json::Value, BDKJNIError
         )?
         .into();
 
-        serde_json::to_value(&ptr).map_err(BDKJNIError::Serialization)
+        serde_json::to_value(&ptr).map_err(BdkJniError::Serialization)
     } else {
-        Err(BDKJNIError::Unsupported(
+        Err(BdkJniError::Unsupported(
             "Called `do_constructor_call` with a non-Constructor request".to_string(),
         ))
     }
@@ -280,37 +280,37 @@ fn do_constructor_call(req: BDKRequest) -> Result<serde_json::Value, BDKJNIError
 #[allow(dead_code)]
 fn do_wallet_call<S, D>(
     wallet: &Wallet<S, D>,
-    req: BDKRequest,
-) -> Result<serde_json::Value, BDKJNIError>
+    req: BdkRequest,
+) -> Result<serde_json::Value, BdkJniError>
 where
     S: bdk::blockchain::Blockchain,
     D: bdk::database::BatchDatabase,
 {
-    use crate::BDKRequest::*;
+    use crate::BdkRequest::*;
 
     let resp = match req {
         Constructor { .. } => {
-            return Err(BDKJNIError::Unsupported(
+            return Err(BdkJniError::Unsupported(
                 "Called `do_wallet_call` with a Constructor request".to_string(),
             ))
         }
         Destructor { .. } => Ok(serde_json::Value::Null),
         GetNewAddress { .. } => {
-            serde_json::to_value(&wallet.get_address(New)?).map_err(BDKJNIError::Serialization)
+            serde_json::to_value(&wallet.get_address(New)?).map_err(BdkJniError::Serialization)
         }
         Sync { max_address, .. } => {
             serde_json::to_value(&wallet.sync(noop_progress(), max_address)?)
-                .map_err(BDKJNIError::Serialization)
+                .map_err(BdkJniError::Serialization)
         }
         ListUnspent { .. } => {
-            serde_json::to_value(&wallet.list_unspent()?).map_err(BDKJNIError::Serialization)
+            serde_json::to_value(&wallet.list_unspent()?).map_err(BdkJniError::Serialization)
         }
         GetBalance { .. } => {
-            serde_json::to_value(&wallet.get_balance()?).map_err(BDKJNIError::Serialization)
+            serde_json::to_value(&wallet.get_balance()?).map_err(BdkJniError::Serialization)
         }
         ListTransactions { include_raw, .. } => {
             serde_json::to_value(&wallet.list_transactions(include_raw.unwrap_or(false))?)
-                .map_err(BDKJNIError::Serialization)
+                .map_err(BdkJniError::Serialization)
         }
         CreateTx {
             fee_rate,
@@ -334,7 +334,7 @@ where
                     Ok((Address::from_str(&a)?.script_pubkey(), v.parse()?))
                 })
                 .collect::<Result<Vec<_>, _>>()
-                .map_err(|e| BDKJNIError::Parsing(format!("{:?}", e)))?;
+                .map_err(|e| BdkJniError::Parsing(format!("{:?}", e)))?;
 
             let mut builder = wallet.build_tx();
             builder.fee_rate(FeeRate::from_sat_per_vb(fee_rate));
@@ -354,7 +354,7 @@ where
                         .collect::<Result<Vec<_>, _>>()
                 })
                 .transpose()
-                .map_err(|e| BDKJNIError::Parsing(format!("{:?}", e)))?;
+                .map_err(|e| BdkJniError::Parsing(format!("{:?}", e)))?;
             let unspendable: Option<Vec<OutPoint>> = unspendable
                 .map(|u| {
                     u.into_iter()
@@ -362,7 +362,7 @@ where
                         .collect::<Result<Vec<_>, _>>()
                 })
                 .transpose()
-                .map_err(|e| BDKJNIError::Parsing(format!("{:?}", e)))?;
+                .map_err(|e| BdkJniError::Parsing(format!("{:?}", e)))?;
 
             if let Some(utxos) = utxos {
                 builder.add_utxos(utxos.as_slice())?;
@@ -380,7 +380,7 @@ where
                 details,
                 psbt: base64::encode(&serialize(&psbt)),
             })
-            .map_err(BDKJNIError::Serialization)
+            .map_err(BdkJniError::Serialization)
         }
         Sign {
             psbt,
@@ -394,22 +394,28 @@ where
             }
 
             let psbt =
-                base64::decode(&psbt).map_err(|e| BDKJNIError::Parsing(format!("{:?}", e)))?;
-            let psbt = deserialize(&psbt).map_err(|e| BDKJNIError::Parsing(format!("{:?}", e)))?;
-
-            let (psbt, finalized) = wallet.sign(psbt, assume_height)?;
+                base64::decode(&psbt).map_err(|e| BdkJniError::Parsing(format!("{:?}", e)))?;
+            let psbt =
+                &mut deserialize(&psbt).map_err(|e| BdkJniError::Parsing(format!("{:?}", e)))?;
+            let finalized = wallet.sign(
+                psbt,
+                SignOptions {
+                    assume_height,
+                    ..Default::default()
+                },
+            )?;
 
             serde_json::to_value(&SignResponse {
                 psbt: base64::encode(&serialize(&psbt)),
                 finalized,
             })
-            .map_err(BDKJNIError::Serialization)
+            .map_err(BdkJniError::Serialization)
         }
         ExtractPsbt { psbt, .. } => {
             let psbt =
-                base64::decode(&psbt).map_err(|e| BDKJNIError::Parsing(format!("{:?}", e)))?;
+                base64::decode(&psbt).map_err(|e| BdkJniError::Parsing(format!("{:?}", e)))?;
             let psbt: PartiallySignedTransaction =
-                deserialize(&psbt).map_err(|e| BDKJNIError::Parsing(format!("{:?}", e)))?;
+                deserialize(&psbt).map_err(|e| BdkJniError::Parsing(format!("{:?}", e)))?;
 
             Ok(json!({
                 "transaction": serialize(&psbt.extract_tx()).to_hex(),
@@ -417,9 +423,9 @@ where
         }
         Broadcast { raw_tx, .. } => {
             let raw_tx: Vec<u8> =
-                FromHex::from_hex(&raw_tx).map_err(|e| BDKJNIError::Parsing(format!("{:?}", e)))?;
+                FromHex::from_hex(&raw_tx).map_err(|e| BdkJniError::Parsing(format!("{:?}", e)))?;
             let raw_tx: Transaction =
-                deserialize(&raw_tx).map_err(|e| BDKJNIError::Parsing(format!("{:?}", e)))?;
+                deserialize(&raw_tx).map_err(|e| BdkJniError::Parsing(format!("{:?}", e)))?;
 
             let txid = wallet.broadcast(raw_tx)?;
 
@@ -443,12 +449,12 @@ where
                 .map(|d| d.to_string());
 
             serde_json::to_value(&PublicDescriptorsResponse { external, internal })
-                .map_err(BDKJNIError::Serialization)
+                .map_err(BdkJniError::Serialization)
         }
-        GenerateExtendedKey { .. } => Err(BDKJNIError::Unsupported(
+        GenerateExtendedKey { .. } => Err(BdkJniError::Unsupported(
             "Called `do_wallet_call` with a GenerateExtendedKey request".to_string(),
         )),
-        RestoreExtendedKey { .. } => Err(BDKJNIError::Unsupported(
+        RestoreExtendedKey { .. } => Err(BdkJniError::Unsupported(
             "Called `do_wallet_call` with a RestoreExtendedKey request".to_string(),
         )),
     };
@@ -457,8 +463,8 @@ where
 }
 
 #[allow(dead_code)]
-fn do_key_call(req: BDKRequest) -> Result<serde_json::Value, BDKJNIError> {
-    use crate::BDKRequest::*;
+fn do_key_call(req: BdkRequest) -> Result<serde_json::Value, BdkJniError> {
+    use crate::BdkRequest::*;
 
     let secp = Secp256k1::new();
 
@@ -491,7 +497,7 @@ fn do_key_call(req: BDKRequest) -> Result<serde_json::Value, BDKJNIError> {
                 fingerprint: fingerprint.to_string(),
             };
 
-            serde_json::to_value(resp).map_err(BDKJNIError::Serialization)
+            serde_json::to_value(resp).map_err(BdkJniError::Serialization)
         }
         RestoreExtendedKey {
             network,
@@ -514,9 +520,9 @@ fn do_key_call(req: BDKRequest) -> Result<serde_json::Value, BDKJNIError> {
                 fingerprint: fingerprint.to_string(),
             };
 
-            serde_json::to_value(resp).map_err(BDKJNIError::Serialization)
+            serde_json::to_value(resp).map_err(BdkJniError::Serialization)
         }
-        _ => Err(BDKJNIError::Unsupported(
+        _ => Err(BdkJniError::Unsupported(
             "Called `do_key_call` with a non-keys request".to_string(),
         )),
     }
@@ -569,7 +575,7 @@ pub mod android {
         _: JClass,
         incoming_stringj: JString,
     ) -> jstring {
-        use crate::BDKRequest::*;
+        use crate::BdkRequest::*;
 
         android_logger::init_once(
             android_logger::Config::default().with_min_level(log::Level::Debug),
@@ -586,7 +592,7 @@ pub mod android {
             }
         };
 
-        let deser = match serde_json::from_str::<BDKRequest>(incoming_string.as_str()) {
+        let deser = match serde_json::from_str::<BdkRequest>(incoming_string.as_str()) {
             Ok(req) => req,
             Err(e) => {
                 return JNIError {
@@ -622,7 +628,7 @@ pub mod android {
 
                     result
                 } else {
-                    Err(BDKJNIError::Unsupported(
+                    Err(BdkJniError::Unsupported(
                         "Invalid wallet pointer".to_string(),
                     ))
                 }
