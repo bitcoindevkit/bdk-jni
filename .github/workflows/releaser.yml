@@ -1,0 +1,44 @@
+name: Library Releaser
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  releaser:
+    name: build_releaser
+    runs-on: ubuntu-latest
+    env:
+      BUILD_TARGETS: aarch64,armv7,x86_64,i686
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set default toolchain
+        run: rustup default stable
+      - name: Set profile
+        run: rustup set profile minimal
+      - name: Add targets
+        run: rustup target add x86_64-linux-android i686-linux-android aarch64-linux-android armv7-linux-androideabi
+      - name: Build
+        run: ./gradlew build
+      - name: release
+        uses: actions/create-release@v1
+        id: create_release
+        with:
+          draft: false
+          prerelease: false
+          release_name: bdk-jni-${{ github.ref }}
+          tag_name: ${{ github.ref }}
+          body_path: CHANGELOG.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+      - name: upload linux artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: library/build/outputs/aar/library-release.aar
+          asset_name: library-release.aar
+          asset_content_type: application/gzip
