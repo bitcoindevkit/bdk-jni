@@ -1,0 +1,30 @@
+name: Library Builder
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build-all:
+    name: Build all targets
+    runs-on: ubuntu-18.04
+    env:
+      BUILD_TARGETS: aarch64,armv7,x86_64,i686
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set default toolchain
+        run: rustup default stable
+      - name: Set profile
+        run: rustup set profile minimal
+      - name: Add targets
+        run: rustup target add x86_64-linux-android i686-linux-android aarch64-linux-android armv7-linux-androideabi
+      - name: Build
+        run: ./gradlew build
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: build-aar
+          path: library/build/outputs/aar/library-release.aar
