@@ -1,25 +1,21 @@
 package org.bitcoindevkit.bdkjni.Types
 
-import android.os.Parcelable
 import com.fasterxml.jackson.databind.JsonNode
-import kotlinx.android.parcel.Parcelize
 
 enum class Network {
     regtest,
     testnet,
 }
 
-@Parcelize
 data class WalletConstructor(
     var name: String,
     var network: Network,
     var path: String,
     var descriptor: String,
     var change_descriptor: String?,
-
     var electrum_url: String,
     var electrum_proxy: String?
-) : Parcelable
+)
 
 data class TxOut(
     var script_pubkey: String,
