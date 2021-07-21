@@ -37,7 +37,7 @@ afterEvaluate {
 
     publishing {
         publications {
-            // Creates a Maven publication called "release".
+            // create a Maven publication called "release"
             release(MavenPublication) {
                 // Applies the component for the release build variant.
                 from components.release
@@ -47,15 +47,18 @@ afterEvaluate {
                 artifactId = 'bdk-android'
                 version = '0.2.1-dev'
             }
-            // Creates a Maven publication called “debug”.
-            debug(MavenPublication) {
-                // Applies the component for the debug build variant.
-                from components.debug
+            
+            // uncomment the "debug" codeblock below and comment out the "release" codeblock above to
+            // create a Maven publication called “debug”
 
-                groupId = 'org.bitcoindevkit.bdkjni'
-                artifactId = 'bdk-android-debug'
-                version = '0.2.1-dev'
-            }
+            // debug(MavenPublication) {
+            //     // Applies the component for the debug build variant.
+            //     from components.debug
+
+            //     groupId = 'org.bitcoindevkit.bdkjni'
+            //     artifactId = 'bdk-android-debug'
+            //     version = '0.2.1-dev'
+            // }
         }
     }
 }

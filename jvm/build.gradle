@@ -25,14 +25,16 @@ afterEvaluate {
                 from components.java
             }
             
-            // create a Maven publication called "debug"
-            debug(MavenPublication) {
-                groupId = 'org.bitcoindevkit.bdkjni'
-                artifactId = 'bdk-jvm-debug'
-                version = '0.2.1-dev'
+            // uncomment the "debug" codeblock below and comment out the "release" codeblock above to
+            // create a Maven publication called “debug”
 
-                from components.java
-            }
+            // debug(MavenPublication) {
+            //     groupId = 'org.bitcoindevkit.bdkjni'
+            //     artifactId = 'bdk-jvm-debug'
+            //     version = '0.2.1-dev'
+
+            //     from components.java
+            // }
         }
     }
 }
