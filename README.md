@@ -88,15 +88,13 @@ allprojects {
 }
 ```
 
-At the moment we recommend using the `bdk-jni-debug` version of the library so it can be debugged 
+At the moment we recommend using the `bdk-android-debug` version of the library so it can be debugged 
 and used locally in the IDE. Because you added your local Maven repository to your `build.gradle` 
-file, you can now simply add `bdk-jni` or `bdk-jni-debug` to your `app/build.gradle` dependencies:
+file, you can now simply add `bdk-android` or `bdk-android-debug` to your `app/build.gradle` dependencies:
 ```gradle
 dependencies {
-    implementation 'org.bitcoindevkit.bdkjni:bdk-jni-debug:0.2.0'
+    implementation 'org.bitcoindevkit.bdkjni:bdk-android-debug:0.2.1-dev'
     ...
 }
 ```
 
-Note: Once regular release builds are published to a public maven repository these steps will only 
-be needed to test local development builds of bdk-jni.
