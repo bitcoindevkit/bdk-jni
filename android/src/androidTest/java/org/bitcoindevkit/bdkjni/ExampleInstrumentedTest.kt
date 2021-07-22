@@ -1,5 +1,6 @@
 package org.bitcoindevkit.bdkjni
 
+/**
 import android.util.Log
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -17,13 +18,16 @@ import org.junit.Before
 import org.bitcoindevkit.bdkjni.Types.Network
 import org.bitcoindevkit.bdkjni.Types.WalletConstructor
 import org.bitcoindevkit.bdkjni.Types.WalletPtr
-import org.junit.Ignore
+import org.junit.Ignore 
+
+ */
 
 /**
  * Instrumented test, which will execute on an Android device.
  *
  * See [testing documentation](http://d.android.com/tools/testing).
  */
+/**
 @RunWith(AndroidJUnit4::class)
 class ExampleInstrumentedTest {
 
@@ -145,3 +149,4 @@ class ExampleInstrumentedTest {
         Lib().destructor(wallet)
     }
 }
+*/

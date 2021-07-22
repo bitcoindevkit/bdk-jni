@@ -1,1 +1,1 @@
-include ':android', ":jvm"
+include ':jvm', ':test-fixtures', ':android'

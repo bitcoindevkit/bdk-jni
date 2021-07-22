@@ -532,11 +532,11 @@ fn do_key_call(req: BdkRequest) -> Result<serde_json::Value, BdkJniError> {
 #[allow(non_snake_case)]
 pub mod bdk_jni {
     use std::ffi::CString;
-    
+
     use jni::objects::{JClass, JObject, JString};
     use jni::sys::jstring;
     use jni::JNIEnv;
-    
+
     use crate::*;
 
     #[derive(Debug, Serialize)]

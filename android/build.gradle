@@ -30,6 +30,8 @@ task buildRust(type: Exec) {
     commandLine './build-android.sh'
 }
 
+build.dependsOn buildRust
+
 afterEvaluate {
     android.libraryVariants.all { variant ->
         variant.javaCompileProvider.get().dependsOn(buildRust)
@@ -47,30 +49,28 @@ afterEvaluate {
                 artifactId = 'bdk-android'
                 version = '0.2.1-dev'
             }
-            
-            // uncomment the "debug" codeblock below and comment out the "release" codeblock above to
-            // create a Maven publication called “debug”
 
-            // debug(MavenPublication) {
-            //     // Applies the component for the debug build variant.
-            //     from components.debug
+            debug(MavenPublication) {
+                // Applies the component for the debug build variant.
+                from components.debug
 
-            //     groupId = 'org.bitcoindevkit.bdkjni'
-            //     artifactId = 'bdk-android-debug'
-            //     version = '0.2.1-dev'
-            // }
+                groupId = 'org.bitcoindevkit.bdkjni'
+                artifactId = 'bdk-android-debug'
+                version = '0.2.1-dev'
+            }
         }
     }
 }
 
 dependencies {
-    implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation "com.fasterxml.jackson.module:jackson-module-kotlin:2.9.+"
+    implementation(project(':jvm'))
+    implementation "com.fasterxml.jackson.module:jackson-module-kotlin:2.9.4"
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'androidx.appcompat:appcompat:1.1.0'
     implementation 'androidx.core:core-ktx:1.2.0'
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test.ext:junit:1.1.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
-    androidTestImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.1'
+    androidTestImplementation 'com.github.tony19:logback-android:2.0.0'
+    androidTestImplementation(project(':test-fixtures'))
 }
