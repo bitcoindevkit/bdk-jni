@@ -4,8 +4,8 @@ name: CI
 
 jobs:
 
-  build-test:
-    name: Build and test
+  build-test-android:
+    name: Build and test android targets
     runs-on: macos-10.15
     strategy:
       matrix:
@@ -32,17 +32,17 @@ jobs:
       - name: Add target
         run: rustup target add ${{ matrix.target }}
       - name: Build
-        run: ./gradlew build
-      - name: Test
+        run: ./gradlew :android:build
+      - name: Android emulator test
         if: ${{ matrix.test == true }}
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ matrix.api }}
           arch: ${{ matrix.arch }}
-          script: ./gradlew connectedDebugAndroidTest
+          script: ./gradlew :android:connectedDebugAndroidTest
 
-  build-all:
-    name: Build all targets
+  build-all-android:
+    name: Build all android targets
     runs-on: ubuntu-18.04
     env:
       BUILD_TARGETS: aarch64,armv7,x86_64,i686
@@ -56,7 +56,7 @@ jobs:
       - name: Add targets
         run: rustup target add x86_64-linux-android i686-linux-android aarch64-linux-android armv7-linux-androideabi
       - name: Build
-        run: ./gradlew build
+        run: ./gradlew :android:build
 
   rust-fmt:
     name: Rust fmt
