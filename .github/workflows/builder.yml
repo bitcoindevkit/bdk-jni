@@ -7,8 +7,8 @@ on:
     branches: [master]
 
 jobs:
-  build-all:
-    name: Build all targets
+  upload-android-aar:
+    name: Upload android aar
     runs-on: ubuntu-18.04
     env:
       BUILD_TARGETS: aarch64,armv7,x86_64,i686
@@ -22,9 +22,32 @@ jobs:
       - name: Add targets
         run: rustup target add x86_64-linux-android i686-linux-android aarch64-linux-android armv7-linux-androideabi
       - name: Build
-        run: ./gradlew build
+        run: ./gradlew :android:build
       - name: Upload Artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: build-aar
-          path: library/build/outputs/aar/library-release.aar
+          name: android-aar
+          path: android/build/outputs/aar/android-*.aar
+          
+  upload-jvm-jar-linux-jnilib:
+    name: Upload jvm jar and linux x86-64 jni lib
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set default toolchain
+        run: rustup default stable
+      - name: Set profile
+        run: rustup set profile minimal
+      - name: Add targets
+        run: rustup target add x86_64-linux-android i686-linux-android aarch64-linux-android armv7-linux-androideabi
+      - name: Build
+        run: ./gradlew :jvm:build
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: jvm-jar-linux-jnilib
+          path: | 
+            jvm/build/libs/jvm.jar
+            jvm/build/jniLibs/x86_64_linux/libbdk_jni.so
+          

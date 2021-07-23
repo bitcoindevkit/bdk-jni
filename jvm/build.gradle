@@ -1,0 +1,50 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm'
+    id 'java-library'
+    id 'maven-publish'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+test {
+    systemProperty "java.library.path", file("${buildDir}/jniLibs/x86_64_linux").absolutePath
+
+    testLogging {
+        events "PASSED", "SKIPPED", "FAILED", "STANDARD_OUT", "STANDARD_ERROR"
+    }
+}
+
+task buildRust(type: Exec) {
+    workingDir '../'
+    commandLine './build-jvm.sh'
+}
+
+test.dependsOn buildRust
+
+afterEvaluate {
+    publishing {
+        publications {
+            // create a Maven publication
+            maven(MavenPublication) {
+                groupId = 'org.bitcoindevkit.bdkjni'
+                artifactId = 'bdk-jvm'
+                version = '0.2.1-dev'
+
+                from components.java
+            }
+        }
+    }
+}
+
+dependencies {
+    implementation platform('org.jetbrains.kotlin:kotlin-bom')
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation "com.fasterxml.jackson.module:jackson-module-kotlin:2.9.10"
+    api "org.slf4j:slf4j-api:1.7.30"
+    testImplementation "ch.qos.logback:logback-classic:1.2.3"
+    testImplementation "ch.qos.logback:logback-core:1.2.3"
+    testImplementation(project(':test-fixtures'))
+}
