@@ -63,7 +63,7 @@ afterEvaluate {
 }
 
 dependencies {
-    implementation(project(':jvm'))
+    api(project(':jvm'))
     implementation "com.fasterxml.jackson.module:jackson-module-kotlin:2.9.4"
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'androidx.appcompat:appcompat:1.1.0'
