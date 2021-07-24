@@ -1,7 +1,12 @@
-apply plugin: 'com.android.library'
-apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-android-extensions'
-apply plugin: 'maven-publish'
+// apply plugin: 'com.android.library'
+// apply plugin: 'kotlin-android'
+// apply plugin: 'kotlin-android-extensions'
+// apply plugin: 'maven-publish'
+
+plugins {
+    id 'com.android.library'
+    id 'maven-publish'
+}
 
 android {
     compileSdkVersion 29
