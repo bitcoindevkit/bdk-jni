@@ -102,3 +102,11 @@ Make sure that the compiler from the NDK is in your PATH
 
 If the library is built in debug mode, there should already be a symlink from 
 ./target/debug/<target>/libbdk\_jni.so to the `jniLibs` directory, otherwise manually copy the shared object.
+
+### License
+Licensed under either of
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
+at your option.
