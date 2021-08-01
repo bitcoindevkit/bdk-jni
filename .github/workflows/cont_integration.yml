@@ -61,6 +61,9 @@ jobs:
   rust-fmt:
     name: Rust fmt
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./native-libs
     steps:
       - name: Checkout
         uses: actions/checkout@v2
