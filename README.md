@@ -2,6 +2,12 @@
 
 <a href="https://github.com/bitcoindevkit/bdk-jni/actions?query=workflow%3ACI"><img alt="CI Status" src="https://github.com/bitcoindevkit/bdk-jni/workflows/CI/badge.svg"></a>
 
+## Overview
+
+This repository is home of two libraries, `bdk-jvm` and `bdk-android`. You can build `bdk-jvm` without building `bdk-android`, but `bdk-android` relies on the artifact built in `bdk-jvm` to function, so if you are building for Android you need to compile both libraries. Both rely on the `test-fixtures` project for testing.  
+<br/>
+
+### Building both libraries
 The minimum JDK version required to build this library is JDK 11. Make sure your `JAVA_HOME` env variable is set and `java --version` displays version 11 or above. The Rust version used to compile this library is `1.53.0`.
 
 If you haven't installed rust android targets first add those to your environment using [rustup](https://www.rust-lang.org/learn/get-started)
@@ -44,7 +50,8 @@ command line. If starting from the command line you will also need to set the `A
 env variable.
 ```
 export ANDROID_SDK_ROOT=</home/<user>/Android/Sdk or where ever your Sdk is installed>
-```
+```  
+<br/>
 
 ### Publish .aar and .jar files to local maven repository
 
@@ -82,13 +89,15 @@ dependencies {
     implementation 'org.bitcoindevkit.bdkjni:bdk-android-debug:0.2.1-dev'
     ...
 }
-```
+```  
+<br/>
 
 ### Using the `bdk-jvm` library
 The `bdk-jvm` library will attempt to load the native library (the `libbdk_jni.so` file) when you call the `Lib.load()` method. You must put the native library in the path it searches by default or you provide a custom paths in order for the library to find the native library. Do do this, you can either:
-1. Run the app without doing anything special and see the error thrown. You can then place the native library for your architecture (located in the /`target` directory) in one of those locations
+1. Run the app without doing anything special and see the error thrown. You can then place the native library for your architecture (located in the `/native-libs/target/<your architecture>/debug/` directory) in one of those locations
 2. Define a `LD_LIBRARY_PATH` environment variable with a path to a location where you put the native library file
-3. Call your application from the command line while providing a `java.library.path` variable.
+3. Call your application from the command line while providing a `java.library.path` variable.  
+<br/>
 
 ### Build just the native library
 
@@ -100,7 +109,8 @@ CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="aarch64-linux-android21-clang" CC="aa
 Make sure that the compiler from the NDK is in your PATH
 
 If the library is built in debug mode, there should already be a symlink from 
-./target/debug/<target>/libbdk\_jni.so to the `jniLibs` directory, otherwise manually copy the shared object.
+./target/debug/<target>/libbdk\_jni.so to the `jniLibs` directory, otherwise manually copy the shared object.  
+<br/>
 
 ### License
 Licensed under either of
