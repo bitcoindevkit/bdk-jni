@@ -2,8 +2,7 @@
 
 <a href="https://github.com/bitcoindevkit/bdk-jni/actions?query=workflow%3ACI"><img alt="CI Status" src="https://github.com/bitcoindevkit/bdk-jni/workflows/CI/badge.svg"></a>
 
-Install Open JDK 14 or later if not already installed and make sure your `JAVA_HOME` env variable is
-set and `java --version` is found and displays the the correct version.
+The minimum JDK version required to build this library is JDK 11. Make sure your `JAVA_HOME` env variable is set and `java --version` displays version 11 or above. The Rust version used to compile this library is `1.53.0`.
 
 If you haven't installed rust android targets first add those to your environment using [rustup](https://www.rust-lang.org/learn/get-started)
 ```sh
