@@ -13,9 +13,10 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class AndroidLibTest : LibTest() {
-    override fun getTestDataDir(): String {
+    override fun getDataDir(): String {
         val context = ApplicationProvider.getApplicationContext<Application>()
-        return context.getDir("bdk-test", MODE_PRIVATE).toString()
+        val dirName = "bdk-test-${randomDirId()}"
+        return context.getDir(dirName, MODE_PRIVATE).toString()
     }
 
 }

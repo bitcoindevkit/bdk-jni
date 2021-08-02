@@ -3,15 +3,13 @@ package org.bitcoindevkit.bdkjni
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.runBlocking
-
-import org.junit.After
 import org.junit.Assert.*
-import org.junit.Before
 import org.junit.Ignore
 import org.junit.Test
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.File
+import java.util.*
 
 /**
  * Library test, which will execute on linux host.
@@ -27,25 +25,25 @@ abstract class LibTest {
 
     private val log: Logger = LoggerFactory.getLogger(LibTest::class.java)
 
-    private lateinit var wallet: WalletPtr
-
-    abstract fun getTestDataDir(): String
-
-    fun cleanupTestDataDir() {
-        File(getTestDataDir()).deleteRecursively()
+    fun randomDirId(): String {
+        return UUID.randomUUID().toString().substring(0, 10)
     }
 
-    @Before
-    fun constructor() {
-        val dir = File(getTestDataDir())
+    abstract fun getDataDir(): String
+
+    fun cleanupDataDir(dir: String) {
+        File(dir).deleteRecursively()
+    }
+
+    fun constructor(dir: String): WalletPtr {
         val descriptor =
             "wpkh(tprv8ZgxMBicQKsPexGYyaFwnAsCXCjmz2FaTm6LtesyyihjbQE3gRMfXqQBXKM43DvC1UgRVv1qom1qFxNMSqVAs88qx9PhgFnfGVUdiiDf6j4/0/*)"
         val electrum = "tcp://electrum.blockstream.info:60001"
-        wallet = Lib().constructor(
+        val wallet = Lib().constructor(
             WalletConstructor(
                 "testnet",
                 Network.regtest,
-                dir.toString(),
+                dir,
                 descriptor,
                 null,
                 electrum,
@@ -53,35 +51,57 @@ abstract class LibTest {
             )
         )
         Lib().sync(wallet)
+        return wallet
     }
 
     @Test
     fun newAddress() {
-        val address = Lib().get_new_address(wallet)
-        assertFalse(address.isEmpty())
-        log.debug("newAddress: $address")
+        val dir = getDataDir()
+        val wallet = constructor(dir)
+        try {
+            val address = Lib().get_new_address(wallet)
+            assertFalse(address.isEmpty())
+            log.debug("newAddress: $address")
+        } finally {
+            Lib().destructor(wallet)
+            cleanupDataDir(dir)
+        }
     }
 
     @Test
     fun sync() {
-        Lib().sync(wallet, 100)
-        val balance = Lib().get_balance(wallet)
-        assertFalse(balance == 0L)
+        val dir = getDataDir()
+        val wallet = constructor(dir)
+        try {
+            Lib().sync(wallet, 100)
+            val balance = Lib().get_balance(wallet)
+            assertFalse(balance == 0L)
+        } finally {
+            Lib().destructor(wallet)
+            cleanupDataDir(dir)
+        }
     }
 
     // TODO need to figure out why this passes when testing with a localhost node but fails when using blockstream.info
     @Ignore
     @Test
     fun multiThreadBalance() {
-        runBlocking {
-            val flow1 = newBalanceFlow(1).flowOn(Dispatchers.IO)
-            val flow2 = newBalanceFlow(2).flowOn(Dispatchers.IO)
-            flow1.flatMapMerge(concurrency = 2) { flow2 }.collect()
-            //flow1.collect()
+        val dir = getDataDir()
+        val wallet = constructor(dir)
+        try {
+            runBlocking {
+                val flow1 = newBalanceFlow(wallet, 1).flowOn(Dispatchers.IO)
+                val flow2 = newBalanceFlow(wallet, 2).flowOn(Dispatchers.IO)
+                flow1.flatMapMerge(concurrency = 2) { flow2 }.collect()
+                //flow1.collect()
+            }
+        } finally {
+            Lib().destructor(wallet)
+            cleanupDataDir(dir)
         }
     }
 
-    private fun newBalanceFlow(id: Int): Flow<Pair<Int, Long>> {
+    private fun newBalanceFlow(wallet: WalletPtr, id: Int): Flow<Pair<Int, Long>> {
         return (1..10).asFlow()
             //.onStart { Log.d("BAL_FLOW", "start flow $id") }
             //.onCompletion { Log.d("BAL_FLOW", "complete flow $id") }
@@ -103,20 +123,41 @@ abstract class LibTest {
 
     @Test
     fun balance() {
-        val balance = Lib().get_balance(wallet)
-        assertFalse(balance == 0L)
+        val dir = getDataDir()
+        val wallet = constructor(dir)
+        try {
+            val balance = Lib().get_balance(wallet)
+            assertFalse(balance == 0L)
+        } finally {
+            Lib().destructor(wallet)
+            cleanupDataDir(dir)
+        }
     }
 
     @Test
     fun unspent() {
-        val unspent = Lib().list_unspent(wallet)
-        assertFalse(unspent.isEmpty())
+        val dir = getDataDir()
+        val wallet = constructor(dir)
+        try {
+            val unspent = Lib().list_unspent(wallet)
+            assertFalse(unspent.isEmpty())
+        } finally {
+            Lib().destructor(wallet)
+            cleanupDataDir(dir)
+        }
     }
 
     @Test
     fun transactions() {
-        val transactions = Lib().list_transactions(wallet)
-        assertFalse(transactions.isEmpty())
+        val dir = getDataDir()
+        val wallet = constructor(dir)
+        try {
+            val transactions = Lib().list_transactions(wallet)
+            assertFalse(transactions.isEmpty())
+        } finally {
+            Lib().destructor(wallet)
+            cleanupDataDir(dir)
+        }
     }
 
     @Test
@@ -151,10 +192,5 @@ abstract class LibTest {
             "tprv8ZgxMBicQKsPebcVXyErMuuv2rgE34m2SLMBhy4hURbSEAWQ1VsWVVmMnD7FKiAuRrxzAETFnUaSvFNQ5SAS5tYEwsM1KHDpUhLLQgd6yG1",
             keys.xprv
         )
-    }
-
-    @After
-    fun destructor() {
-        Lib().destructor(wallet)
     }
 }
