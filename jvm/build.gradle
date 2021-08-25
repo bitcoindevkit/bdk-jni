@@ -10,7 +10,7 @@ java {
 }
 
 test {
-    systemProperty "java.library.path", file("${buildDir}/jniLibs/x86_64_linux").absolutePath
+    systemProperty "java.library.path", file("${buildDir}/jniLibs").absolutePath
 
     testLogging {
         events "PASSED", "SKIPPED", "FAILED", "STANDARD_OUT", "STANDARD_ERROR"
