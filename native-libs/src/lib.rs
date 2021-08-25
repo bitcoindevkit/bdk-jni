@@ -295,9 +295,8 @@ where
             ))
         }
         Destructor { .. } => Ok(serde_json::Value::Null),
-        GetNewAddress { .. } => {
-            serde_json::to_value(&wallet.get_address(New)?).map_err(BdkJniError::Serialization)
-        }
+        GetNewAddress { .. } => serde_json::to_value(&wallet.get_address(New)?.address)
+            .map_err(BdkJniError::Serialization),
         Sync { max_address, .. } => {
             serde_json::to_value(&wallet.sync(noop_progress(), max_address)?)
                 .map_err(BdkJniError::Serialization)
@@ -340,9 +339,7 @@ where
             builder.fee_rate(FeeRate::from_sat_per_vb(fee_rate));
 
             if send_all == Some(true) {
-                builder
-                    .drain_wallet()
-                    .set_single_recipient(addressees[0].0.clone());
+                builder.drain_wallet().drain_to(addressees[0].0.clone());
             } else {
                 builder.set_recipients(addressees);
             }

@@ -34,11 +34,16 @@ data class UTXO(
 data class TransactionDetails(
     val transaction: JsonNode?,
     val txid: String,
-    val timestamp: Long,
     val received: Long,
     val sent: Long,
-    val fees: Long,
-    val height: Long? // FIXME: should be UInt
+    val fee: Long?,
+    val confirmation_time: ConfirmationTime?,
+    val verified: Boolean
+)
+
+data class ConfirmationTime(
+    val height: Long,
+    val timestamp: Long,
 )
 
 data class CreateTxResponse(
