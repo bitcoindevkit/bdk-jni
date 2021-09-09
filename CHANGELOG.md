@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Upgrade bdk to v0.11.0
 - Add new `WalletConstructor` parameters: `electrum_proxy`, `electrum_retry`, `electrum_timeout`, and `electrum_stop_gap`
+- Add new `Lib.get_last_unused_address()` function
 
 ## [v0.2.0]
 

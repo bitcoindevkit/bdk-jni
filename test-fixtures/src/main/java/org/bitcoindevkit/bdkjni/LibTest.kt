@@ -62,9 +62,29 @@ abstract class LibTest {
         val dir = getDataDir()
         val wallet = constructor(dir)
         try {
-            val address = Lib().get_new_address(wallet)
-            assertFalse(address.isEmpty())
-            log.debug("newAddress: $address")
+            val newAddress1 = Lib().get_new_address(wallet)
+            assertFalse(newAddress1.isEmpty())
+            log.debug("newAddress1: $newAddress1")
+            val newAddress2 = Lib().get_new_address(wallet)
+            log.debug("newAddress2: $newAddress2")
+            assertNotEquals(newAddress1, newAddress2)
+        } finally {
+            Lib().destructor(wallet)
+            cleanupDataDir(dir)
+        }
+    }
+
+    @Test
+    fun lastUnusedAddress() {
+        val dir = getDataDir()
+        val wallet = constructor(dir)
+        try {
+            val unusedAddress1 = Lib().get_last_unused_address(wallet)
+            assertFalse(unusedAddress1.isEmpty())
+            log.debug("unusedAddress1: $unusedAddress1")
+            val unusedAddress2 = Lib().get_last_unused_address(wallet)
+            log.debug("unusedAddress2: $unusedAddress2")
+            assertEquals(unusedAddress1, unusedAddress2)            
         } finally {
             Lib().destructor(wallet)
             cleanupDataDir(dir)

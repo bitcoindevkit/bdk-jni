@@ -28,7 +28,7 @@ use bdk::{FeeRate, TransactionDetails};
 use bdk::keys::bip39::{Language, Mnemonic, MnemonicType};
 use bdk::keys::{DerivableKey, ExtendedKey, GeneratableKey, GeneratedKey};
 use bdk::miniscript::miniscript;
-use bdk::wallet::AddressIndex::New;
+use bdk::wallet::AddressIndex::{LastUnused, New};
 use bitcoin::consensus::encode::{deserialize, serialize};
 use bitcoin::hashes::hex::{FromHex, ToHex};
 use bitcoin::util::psbt::PartiallySignedTransaction;
@@ -69,6 +69,9 @@ enum BdkRequest {
         wallet: IntermediatePtr,
     },
     GetNewAddress {
+        wallet: IntermediatePtr,
+    },
+    GetLastUnusedAddress {
         wallet: IntermediatePtr,
     },
     Sync {
@@ -304,6 +307,10 @@ where
         Destructor { .. } => Ok(serde_json::Value::Null),
         GetNewAddress { .. } => serde_json::to_value(&wallet.get_address(New)?.address)
             .map_err(BdkJniError::Serialization),
+        GetLastUnusedAddress { .. } => {
+            serde_json::to_value(&wallet.get_address(LastUnused)?.address)
+                .map_err(BdkJniError::Serialization)
+        }
         Sync { max_address, .. } => {
             serde_json::to_value(&wallet.sync(noop_progress(), max_address)?)
                 .map_err(BdkJniError::Serialization)
@@ -611,6 +618,7 @@ pub mod bdk_jni {
             Constructor { .. } => do_constructor_call(deser),
             Destructor { ref wallet }
             | GetNewAddress { ref wallet }
+            | GetLastUnusedAddress { ref wallet }
             | Sync { ref wallet, .. }
             | ListUnspent { ref wallet }
             | GetBalance { ref wallet }

@@ -59,6 +59,19 @@ class Lib {
         return json.asText()
     }
 
+    fun get_last_unused_address(wallet: WalletPtr): String {
+        val node = JsonNodeFactory.instance.objectNode()
+        node.set("wallet", mapper.valueToTree<JsonNode>(wallet))
+        val req = JsonRpc("get_last_unused_address", node)
+        val reqString = mapper.writeValueAsString(req)
+        val resString = call(reqString)
+        val json: JsonNode = mapper.readValue(resString)
+        if (json.has("error")) {
+            throw Exception(json.get("error").asText())
+        }
+        return json.asText()
+    }
+
     fun sync(wallet: WalletPtr, max_address: Int?=null) {
         val node = JsonNodeFactory.instance.objectNode()
         node.set("wallet", mapper.valueToTree<JsonNode>(wallet))
