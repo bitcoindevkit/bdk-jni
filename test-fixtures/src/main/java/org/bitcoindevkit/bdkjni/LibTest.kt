@@ -47,7 +47,10 @@ abstract class LibTest {
                 descriptor,
                 null,
                 electrum,
-                null
+                null,
+                5,
+                null,
+                100,
             )
         )
         Lib().sync(wallet)

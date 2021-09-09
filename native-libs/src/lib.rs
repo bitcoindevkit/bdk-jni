@@ -17,14 +17,13 @@ use log::{debug, error, info, trace};
 
 use bdk::sled;
 use bdk::Wallet;
-use bdk::{bitcoin, KeychainKind};
-use bdk::{electrum_client, SignOptions};
+use bdk::{bitcoin, KeychainKind, SignOptions};
 
 use bdk::bitcoin::secp256k1::Secp256k1;
-use bdk::blockchain::{noop_progress, ElectrumBlockchain};
+use bdk::blockchain::{
+    noop_progress, ConfigurableBlockchain, ElectrumBlockchain, ElectrumBlockchainConfig,
+};
 use bdk::{FeeRate, TransactionDetails};
-
-use electrum_client::Client;
 
 use bdk::keys::bip39::{Language, Mnemonic, MnemonicType};
 use bdk::keys::{DerivableKey, ExtendedKey, GeneratableKey, GeneratedKey};
@@ -62,6 +61,9 @@ enum BdkRequest {
 
         electrum_url: String,
         electrum_proxy: Option<String>,
+        electrum_retry: u8,
+        electrum_timeout: Option<u8>,
+        electrum_stop_gap: usize,
     },
     Destructor {
         wallet: IntermediatePtr,
@@ -241,7 +243,10 @@ fn do_constructor_call(req: BdkRequest) -> Result<serde_json::Value, BdkJniError
         descriptor,
         change_descriptor,
         electrum_url,
-        electrum_proxy: _electrum_proxy, // TODO enable use of proxy
+        electrum_proxy,
+        electrum_retry,
+        electrum_timeout,
+        electrum_stop_gap,
     } = req
     {
         let database =
@@ -259,15 +264,17 @@ fn do_constructor_call(req: BdkRequest) -> Result<serde_json::Value, BdkJniError
         let descriptor: &str = descriptor.as_str();
         let change_descriptor: Option<&str> = change_descriptor.as_deref();
 
-        let client = Client::new(&electrum_url)?;
-        let ptr: OpaquePtr<_> = Wallet::new(
-            descriptor,
-            change_descriptor,
-            network,
-            tree,
-            ElectrumBlockchain::from(client),
-        )?
-        .into();
+        let client_config = ElectrumBlockchainConfig {
+            url: electrum_url,
+            socks5: electrum_proxy,
+            retry: electrum_retry,
+            timeout: electrum_timeout,
+            stop_gap: electrum_stop_gap,
+        };
+        let client = ElectrumBlockchain::from_config(&client_config)?;
+
+        let ptr: OpaquePtr<_> =
+            Wallet::new(descriptor, change_descriptor, network, tree, client)?.into();
 
         serde_json::to_value(&ptr).map_err(BdkJniError::Serialization)
     } else {

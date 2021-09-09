@@ -14,8 +14,19 @@ data class WalletConstructor(
     var descriptor: String,
     var change_descriptor: String?,
 
+    /**
+     * URL of the Electrum server (such as ElectrumX, Esplora, BWT) may start with `ssl://` or `tcp://` and include a port
+     * eg. `ssl://electrum.blockstream.info:60002`
+     */
     var electrum_url: String,
-    var electrum_proxy: String?
+    /** URL of the socks5 proxy server or a Tor service, null means no proxy */
+    var electrum_proxy: String?,
+    /** Request retry count */
+    var electrum_retry: Int,
+    /** Request timeout (seconds), null means no timeout */
+    var electrum_timeout: Int?,
+    /** Stop searching addresses for transactions after finding an unused gap of this length */
+    var electrum_stop_gap: Long,
 )
 
 data class TxOut(
