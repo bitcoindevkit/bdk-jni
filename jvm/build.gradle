@@ -1,6 +1,7 @@
 plugins {
     id 'org.jetbrains.kotlin.jvm'
     id 'java-library'
+    id 'java-test-fixtures'
     id 'maven-publish'
 }
 
@@ -44,7 +45,8 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation "com.fasterxml.jackson.module:jackson-module-kotlin:2.9.10"
     api "org.slf4j:slf4j-api:1.7.30"
-    testImplementation "ch.qos.logback:logback-classic:1.2.3"
-    testImplementation "ch.qos.logback:logback-core:1.2.3"
-    testImplementation(project(':test-fixtures'))
+    testFixturesImplementation "junit:junit:4.13.2"
+    testFixturesImplementation "ch.qos.logback:logback-classic:1.2.3"
+    testFixturesImplementation "ch.qos.logback:logback-core:1.2.3"
+    testFixturesImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.1'
 }
