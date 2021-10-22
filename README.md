@@ -26,7 +26,7 @@ export ANDROID_NDK_HOME=/home/<user>/Android/Sdk/ndk/<NDK version, ie. 21.4.7075
 
 Build and unit test jvm .jar and build android .aar libraries with:
 ```sh
-./gradlew :jvm:build
+./gradlew build
 ```
 
 Test android .aar library connected unit tests with:
