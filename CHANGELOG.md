@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.3.0]
+
 - Upgrade bdk to v0.11.0
 - Add new `WalletConstructor` parameters: `electrum_proxy`, `electrum_retry`, `electrum_timeout`, and `electrum_stop_gap`
 - Add new `Lib.get_last_unused_address()` function
@@ -42,5 +44,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Fixed
 - Fix crashes on errors
 
-[unreleased]: https://github.com/bitcoindevkit/bdk/compare/v0.2.0...HEAD
+[unreleased]: https://github.com/bitcoindevkit/bdk/compare/v0.3.0...HEAD
+[v0.2.0]: https://github.com/bitcoindevkit/bdk-jni/compare/v0.2.0...v0.3.0
 [v0.2.0]: https://github.com/bitcoindevkit/bdk-jni/compare/d08725cc...v0.2.0

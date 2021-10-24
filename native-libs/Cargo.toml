@@ -1,6 +1,6 @@
 [package]
 name = "bdk-jni"
-version = "0.2.1-dev"
+version = "0.3.0"
 authors = ["Alekos Filini <alekos.filini@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"

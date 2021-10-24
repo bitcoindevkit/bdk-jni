@@ -87,7 +87,7 @@ and used locally in the IDE. Because you added your local Maven repository to yo
 file, you can now simply add `bdk-android` or `bdk-android-debug` to your `app/build.gradle` dependencies:
 ```gradle
 dependencies {
-    implementation 'org.bitcoindevkit.bdkjni:bdk-android-debug:0.2.1-dev'
+    implementation 'org.bitcoindevkit.bdkjni:bdk-android-debug:0.3.0'
     ...
 }
 ```  

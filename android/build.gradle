@@ -52,7 +52,7 @@ afterEvaluate {
                 // You can then customize attributes of the publication as shown below.
                 groupId = 'org.bitcoindevkit.bdkjni'
                 artifactId = 'bdk-android'
-                version = '0.2.1-dev'
+                version = '0.3.0'
             }
 
             debug(MavenPublication) {
@@ -61,7 +61,7 @@ afterEvaluate {
 
                 groupId = 'org.bitcoindevkit.bdkjni'
                 artifactId = 'bdk-android-debug'
-                version = '0.2.1-dev'
+                version = '0.3.0'
             }
         }
     }

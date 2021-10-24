@@ -32,7 +32,7 @@ afterEvaluate {
             maven(MavenPublication) {
                 groupId = 'org.bitcoindevkit.bdkjni'
                 artifactId = 'bdk-jvm'
-                version = '0.2.1-dev'
+                version = '0.3.0'
 
                 from components.java
             }

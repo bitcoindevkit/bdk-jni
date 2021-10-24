@@ -1,7 +1,7 @@
 target
 **/*.rs.bk
 Cargo.lock
-
+**/*.so
 .idea
 .gradle
 local.properties
