@@ -9,8 +9,7 @@ buildscript {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
 }
-
-allprojects {
+subprojects {
     repositories {
         google()
         mavenCentral()     

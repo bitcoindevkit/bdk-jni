@@ -43,6 +43,16 @@ afterEvaluate {
     }
 
     publishing {
+        repositories {
+            maven {
+                name = "GitHubPackages"
+                url = "https://maven.pkg.github.com/bitcoindevkit/bdk-jni"
+                credentials {
+                    username = System.getenv("GITHUB_ACTOR") ?: System.getenv("GITHUB_USERNAME")
+                    password = System.getenv("GITHUB_TOKEN") ?: System.getenv("GITHUB_TOKEN")
+                }
+            }
+        }
         publications {
             // create a Maven publication called "release"
             release(MavenPublication) {
