@@ -2,6 +2,12 @@
 
 <a href="https://github.com/bitcoindevkit/bdk-jni/actions?query=workflow%3ACI"><img alt="CI Status" src="https://github.com/bitcoindevkit/bdk-jni/workflows/CI/badge.svg"></a>
 
+## ⚠️⚠️ Notice ⚠️⚠️
+This library is now unmaintained and was deprecated in favor of the newest [bdk-android](https://github.com/bitcoindevkit/bdk-kotlin) and [bdk-jvm](https://github.com/bitcoindevkit/bdk-kotlin) libraries. Please consider this repository an archive only.
+
+---
+<br/>
+
 ## Overview
 
 This repository is home of two libraries, `bdk-jvm` and `bdk-android`. You can build `bdk-jvm` without building `bdk-android`, but `bdk-android` relies on the artifact built in `bdk-jvm` to function, so if you are building for Android you need to compile both libraries. Both rely on the `test-fixtures` project for testing.  
